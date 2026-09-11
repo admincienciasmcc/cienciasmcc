@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<%# títulos longos (posts) dispensam o sufixo: o Google corta em ~60 caracteres %>
+<% const _titulo = !title ? settings.site_title
+     : (title.length > 40 ? title : `${title} — ${settings.site_title}`); %>
+<title><%= _titulo %></title>
+<meta name="description" content="<%= typeof metaDescription !== 'undefined' && metaDescription ? metaDescription : settings.site_description %>">
+<meta name="author" content="<%= settings.owner_name %>">
+<meta property="og:site_name" content="<%= settings.site_title %>">
+<meta property="og:title" content="<%= title || settings.site_title %>">
+<meta property="og:description" content="<%= typeof metaDescription !== 'undefined' && metaDescription ? metaDescription : settings.site_description %>">
+<meta property="og:type" content="<%= typeof ogType !== 'undefined' ? ogType : 'website' %>">
+<% if (typeof ogImage !== 'undefined' && ogImage) { %>
+<meta property="og:image" content="<%= ogImage %>">
+<% } %>
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="application/rss+xml" title="<%= settings.site_title %>" href="/feed.xml">
+<link rel="preload" href="/fonts/lato-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/lato-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/site.css">
+<meta name="theme-color" content="#15603a">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%2315603a'/><stop offset='1' stop-color='%230f766e'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(%23g)'/><text x='50' y='72' font-size='64' font-weight='700' font-family='Helvetica,Arial,sans-serif' fill='%23ffffff' text-anchor='middle'>C</text></svg>">
+</head>
+<body>
+<a class="skip" href="#conteudo">Ir para o conteúdo</a>

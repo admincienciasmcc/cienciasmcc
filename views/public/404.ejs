@@ -1,0 +1,18 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="section">
+  <div class="wrap empty" style="padding-block:6rem">
+    <div class="big">🧭</div>
+    <h1 style="font-size:2rem"><%= title %></h1>
+    <p class="muted" style="max-width:44ch;margin:0 auto 2rem">
+      <%= typeof message !== 'undefined' && message
+            ? message
+            : 'A página que você procurou não existe ou mudou de endereço.' %>
+    </p>
+    <a class="btn btn-primary" href="/">Voltar ao início</a>
+    <a class="btn btn-ghost" href="/blog">Ir para o blog</a>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

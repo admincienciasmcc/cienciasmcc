@@ -1,0 +1,97 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { pendingBadge: counts.pending }) %>
+
+<div class="topbar">
+  <h1>Comentários</h1>
+  <div class="spacer"></div>
+  <span class="muted small">
+    A moderação combina uma detecção automática de spam com sua leitura final.
+  </span>
+</div>
+
+<div class="tabs">
+  <a class="<%= status === 'pending' ? 'is-active' : '' %>" href="/admin/comentarios?status=pending">Pendentes (<%= counts.pending %>)</a>
+  <a class="<%= status === 'approved' ? 'is-active' : '' %>" href="/admin/comentarios?status=approved">Publicados (<%= counts.approved %>)</a>
+  <a class="<%= status === 'spam' ? 'is-active' : '' %>" href="/admin/comentarios?status=spam">Spam (<%= counts.spam %>)</a>
+  <a class="<%= status === 'trash' ? 'is-active' : '' %>" href="/admin/comentarios?status=trash">Lixeira (<%= counts.trash %>)</a>
+</div>
+
+<% if (!comments.length) { %>
+  <div class="panel">
+    <div class="empty-state">
+      <div class="big">💬</div>
+      <h3>Nada por aqui</h3>
+      <p>Nenhum comentário nesta situação.</p>
+    </div>
+  </div>
+<% } %>
+
+<% comments.forEach(c => { %>
+  <div class="comment-card <%= c.status === 'spam' ? 'is-spam' : '' %>">
+    <div class="who">
+      <strong><%= c.author_name %></strong>
+      <% if (c.author_email) { %><span class="muted small"><%= c.author_email %></span><% } %>
+      <% if (c.by_owner) { %><span class="tag tag-green">sua resposta</span><% } %>
+      <span class="muted small">·</span>
+      <span class="muted small"><%= fmt(c.created_at) %></span>
+      <span class="muted small">em</span>
+      <a href="/blog/<%= c.post_slug %>#c<%= c.id %>" target="_blank"><%= c.post_title %></a>
+      <% if (c.spam_score >= 30) { %>
+        <span class="tag tag-<%= c.spam_score >= 60 ? 'red' : 'amber' %>" title="<%= c.spam_reason %>">
+          risco <%= c.spam_score %>%
+        </span>
+      <% } %>
+    </div>
+
+    <blockquote><%- c.html %></blockquote>
+
+    <% if (c.spam_reason) { %>
+      <p class="muted small" style="margin:-.35rem 0 .6rem">Motivo detectado: <%= c.spam_reason %></p>
+    <% } %>
+
+    <div class="btn-row">
+      <% if (c.status !== 'approved') { %>
+        <form method="post" action="/admin/comentarios/<%= c.id %>/aprovar">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="btn btn-primary btn-sm">✓ Aprovar</button>
+        </form>
+      <% } %>
+      <% if (c.status !== 'spam') { %>
+        <form method="post" action="/admin/comentarios/<%= c.id %>/spam">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="btn btn-ghost btn-sm">🚫 Spam</button>
+        </form>
+      <% } %>
+      <% if (c.status !== 'trash') { %>
+        <form method="post" action="/admin/comentarios/<%= c.id %>/lixo">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="btn btn-ghost btn-sm">🗑 Lixeira</button>
+        </form>
+      <% } %>
+      <form method="post" action="/admin/comentarios/<%= c.id %>/excluir"
+            data-confirm="Excluir definitivamente este comentário?">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <button class="btn btn-danger btn-sm">Excluir</button>
+      </form>
+      <button class="btn btn-ghost btn-sm" type="button" data-analyze-comment="<%= c.id %>">
+        🔎 Analisar<%= aiEnabled ? ' com o assistente' : '' %>
+      </button>
+    </div>
+
+    <div id="analysis-<%= c.id %>" class="small" style="margin-top:.6rem"></div>
+
+    <% if (!c.by_owner) { %>
+      <details style="margin-top:.75rem">
+        <summary class="small muted" style="cursor:pointer">Responder publicamente</summary>
+        <form method="post" action="/admin/comentarios/<%= c.id %>/responder" style="margin-top:.6rem">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <textarea name="resposta" rows="3" data-reply-box="<%= c.id %>"
+                    placeholder="Sua resposta aparece logo abaixo do comentário, assinada como autora."></textarea>
+          <button class="btn btn-primary btn-sm" style="margin-top:.5rem">Publicar resposta</button>
+        </form>
+      </details>
+    <% } %>
+  </div>
+<% }) %>
+
+<%- include('partials/foot') %>

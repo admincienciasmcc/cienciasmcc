@@ -1,0 +1,71 @@
+<%- include('partials/head') %>
+<%- include('partials/nav') %>
+
+<div class="topbar">
+  <h1>Posts</h1>
+  <div class="spacer"></div>
+  <form class="inline-form" method="get" action="/admin/posts">
+    <% if (status) { %><input type="hidden" name="status" value="<%= status %>"><% } %>
+    <input type="search" name="q" value="<%= termo %>" placeholder="Buscar…" style="width:220px">
+    <button class="btn btn-ghost btn-sm" type="submit">Buscar</button>
+  </form>
+  <a class="btn btn-primary" href="/admin/posts/novo">✍️ Novo post</a>
+</div>
+
+<div class="tabs">
+  <a class="<%= !status ? 'is-active' : '' %>" href="/admin/posts">Todos (<%= counts.all %>)</a>
+  <a class="<%= status === 'published' ? 'is-active' : '' %>" href="/admin/posts?status=published">Publicados (<%= counts.published %>)</a>
+  <a class="<%= status === 'draft' ? 'is-active' : '' %>" href="/admin/posts?status=draft">Rascunhos (<%= counts.draft %>)</a>
+  <a class="<%= status === 'scheduled' ? 'is-active' : '' %>" href="/admin/posts?status=scheduled">Agendados (<%= counts.scheduled %>)</a>
+</div>
+
+<div class="panel">
+  <% if (posts.length) { %>
+    <table class="list">
+      <thead>
+        <tr><th style="width:45%">Título</th><th>Categoria</th><th>Situação</th><th>Data</th><th>Leituras</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% posts.forEach(p => { %>
+          <tr>
+            <td>
+              <a href="/admin/posts/<%= p.id %>"><%= p.title %></a>
+              <% if (p.featured) { %> <span class="tag tag-amber">destaque</span><% } %>
+              <div class="muted small"><%= p.word_count %> palavras · <%= p.reading_time %> min</div>
+            </td>
+            <td class="small"><%= p.category_name || '—' %></td>
+            <td>
+              <% if (p.status === 'published') { %><span class="tag tag-green">publicado</span>
+              <% } else if (p.status === 'scheduled') { %><span class="tag tag-blue">agendado</span>
+              <% } else { %><span class="tag tag-amber">rascunho</span><% } %>
+            </td>
+            <td class="small muted"><%= p.published_at ? fmt(p.published_at) : '—' %></td>
+            <td class="small"><%= p.views %></td>
+            <td style="text-align:right;white-space:nowrap">
+              <% if (p.status === 'published') { %>
+                <a class="btn btn-ghost btn-sm" href="/blog/<%= p.slug %>" target="_blank">ver</a>
+              <% } %>
+              <form method="post" action="/admin/posts/<%= p.id %>/duplicar" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrf %>">
+                <button class="btn btn-ghost btn-sm">duplicar</button>
+              </form>
+              <form method="post" action="/admin/posts/<%= p.id %>/excluir" style="display:inline"
+                    onsubmit="return confirm('Excluir “<%= p.title.replace(/'/g, "\\'") %>”? Esta ação não pode ser desfeita.')">
+                <input type="hidden" name="_csrf" value="<%= csrf %>">
+                <button class="btn btn-danger btn-sm">excluir</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <div class="empty-state">
+      <div class="big">📄</div>
+      <h3>Nenhum post encontrado</h3>
+      <p>Ajuste a busca ou <a href="/admin/posts/novo">escreva um novo</a>.</p>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/foot') %>

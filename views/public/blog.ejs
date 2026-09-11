@@ -1,0 +1,95 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Blog</p>
+    <h1 style="margin-bottom:.4rem">
+      <% if (termo) { %>Busca por “<%= termo %>”<% } else if (categoria) { %>
+        <%= (categories.find(c => c.slug === categoria) || {}).name || 'Categoria' %>
+      <% } else if (tag) { %>Marcado com “<%= tag %>”<% } else { %>Textos e comentários<% } %>
+    </h1>
+    <p class="muted" style="max-width:60ch">
+      <% if (categoria) { %>
+        <%= (categories.find(c => c.slug === categoria) || {}).description || '' %>
+      <% } else { %>
+        Mitos desfeitos, curiosidades explicadas e conceitos destrinchados: Imunologia,
+        animais peçonhentos, Amazônia, ensino de Ciências e leituras comentadas.
+      <% } %>
+    </p>
+
+    <div class="filters" style="margin-top:2rem">
+      <form class="search-form" method="get" action="/blog">
+        <input type="search" name="q" value="<%= termo %>" placeholder="Buscar no blog…" aria-label="Buscar">
+        <% if (categoria) { %><input type="hidden" name="categoria" value="<%= categoria %>"><% } %>
+        <button class="btn btn-primary btn-sm" type="submit">Buscar</button>
+      </form>
+    </div>
+
+    <%- include('../partials/filtro-pessoa', { base: '/blog', filtro,
+          extra: [termo ? 'q=' + encodeURIComponent(termo) : '', categoria ? 'categoria=' + categoria : '', tag ? 'tag=' + tag : ''].filter(Boolean).join('&') }) %>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="filters">
+      <a class="chip chip-plain <%= !categoria && !tag ? 'is-active' : '' %>"
+         href="/blog<%= termo ? '?q=' + encodeURIComponent(termo) : '' %>">Todas</a>
+      <% categories.forEach(c => { %>
+        <a class="chip <%= categoria === c.slug ? '' : 'chip-plain' %>"
+           style="<%= categoria === c.slug ? '--accent:' + c.color : '' %>"
+           href="/blog?categoria=<%= c.slug %>"><%= c.name %></a>
+      <% }) %>
+    </div>
+
+    <p class="small muted"><%= total %> <%= total === 1 ? 'texto encontrado' : 'textos encontrados' %></p>
+
+    <% if (posts.length) { %>
+      <div class="grid grid-3" style="margin-top:1.5rem">
+        <% posts.forEach(post => { %><%- include('../partials/post-card', { post }) %><% }) %>
+      </div>
+
+      <% if (pages > 1) { %>
+        <nav class="pagination" aria-label="Paginação">
+          <% const base = (n) => {
+               const p = new URLSearchParams();
+               if (termo) p.set('q', termo);
+               if (categoria) p.set('categoria', categoria);
+               if (tag) p.set('tag', tag);
+               if (n > 1) p.set('pagina', n);
+               const s = p.toString();
+               return '/blog' + (s ? '?' + s : '');
+             }; %>
+          <% if (page > 1) { %><a href="<%= base(page - 1) %>">← Anterior</a><% } %>
+          <% for (let n = 1; n <= pages; n++) { %>
+            <% if (n === page) { %><span class="is-current"><%= n %></span>
+            <% } else { %><a href="<%= base(n) %>"><%= n %></a><% } %>
+          <% } %>
+          <% if (page < pages) { %><a href="<%= base(page + 1) %>">Próxima →</a><% } %>
+        </nav>
+      <% } %>
+    <% } else { %>
+      <div class="empty">
+        <div class="big">🔍</div>
+        <h3>Nada encontrado por aqui</h3>
+        <p>Tente outra palavra ou volte para <a href="/blog">todos os textos</a>.</p>
+      </div>
+    <% } %>
+
+    <% if (allTags.length) { %>
+      <div style="margin-top:3.5rem;padding-top:2rem;border-top:1px solid var(--line)">
+        <h4 class="eyebrow">Assuntos</h4>
+        <div class="filters">
+          <% allTags.forEach(t => { %>
+            <a class="chip <%= tag === t.slug ? '' : 'chip-plain' %>" href="/blog?tag=<%= t.slug %>">
+              <%= t.name %> <span class="muted">(<%= t.n %>)</span>
+            </a>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,67 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Produção científica</p>
+    <h1>Publicações</h1>
+    <p class="hero-lead">
+      Uma seleção da produção catalogada no currículo Lattes: artigos em periódicos,
+      livros e capítulos. A lista completa, com resumos expandidos e trabalhos em anais,
+      está no Lattes de cada uma —
+      <% pessoas.forEach((p, i) => { %><% if (p.lattes_url) { %><a href="<%= p.lattes_url %>" target="_blank" rel="noopener"><%= p.short_name.split(' ')[0] %></a><%= i < pessoas.length - 1 ? ' · ' : '' %><% } %><% }) %>.
+    </p>
+
+    <%- include('../partials/filtro-pessoa', { base: '/publicacoes', filtro, extra: kind ? 'tipo=' + kind : '' }) %>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="filters">
+      <a class="chip <%= !kind ? '' : 'chip-plain' %>"
+         href="/publicacoes<%= filtro.slug ? '?quem=' + filtro.slug : '' %>">Tudo (<%= total %>)</a>
+      <% kinds.forEach(k => { %>
+        <a class="chip <%= kind === k.kind ? '' : 'chip-plain' %>"
+           href="/publicacoes?tipo=<%= k.kind %><%= filtro.slug ? '&quem=' + filtro.slug : '' %>">
+          <%= ({ artigo: 'Artigos', livro: 'Livros', capitulo: 'Capítulos',
+                 apresentacao: 'Apresentações', tecnica: 'Produção técnica' })[k.kind] || k.kind %> (<%= k.n %>)
+        </a>
+      <% }) %>
+    </div>
+
+    <p class="small muted" style="margin-top:1.5rem">★ indica trabalhos que elas consideram marcos de suas trajetórias.</p>
+
+    <% groups.forEach(([, items]) => { %>
+      <ul class="pub-list">
+        <% items.forEach(p => { %>
+          <li class="pub-item <%= p.highlight ? 'is-highlight' : '' %>">
+            <div class="pub-year"><%= p.year %></div>
+            <div>
+              <% if (p.authors) { %><div class="authors"><%= p.authors %></div><% } %>
+              <div class="pub-title"><strong><%= p.title %></strong></div>
+              <div class="venue">
+                <%= p.venue %><% if (p.details) { %>, <%= p.details %><% } %>
+                <% if (p.citations > 0) { %><span class="cites"><%= p.citations %> citações</span><% } %>
+              </div>
+              <% if (p.doi || p.url) { %>
+                <div class="small" style="margin-top:.35rem">
+                  <% if (p.doi) { %>
+                    <a href="https://doi.org/<%= p.doi.replace(/^https?:\/\/doi\.org\//, '') %>" target="_blank" rel="noopener">DOI</a>
+                  <% } %>
+                  <% if (p.url) { %><a href="<%= p.url %>" target="_blank" rel="noopener">Acessar</a><% } %>
+                </div>
+              <% } %>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    <% }) %>
+
+    <% if (!groups.length) { %>
+      <div class="empty"><div class="big">📚</div><h3>Nenhuma publicação cadastrada ainda.</h3></div>
+    <% } %>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

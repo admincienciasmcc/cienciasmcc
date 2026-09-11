@@ -1,0 +1,164 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Mitos · Curiosidades · Conceitos</p>
+    <h1 style="max-width:27ch">O que é mito, o que é curiosidade e o que é conceito</h1>
+    <p class="hero-lead" style="max-width:62ch">
+      Muita coisa que se repete sobre ciência não se sustenta. Outra parte é verdade,
+      mas ninguém explicou direito. Somos duas biólogas — uma da pesquisa em Imunologia
+      e animais peçonhentos na Amazônia, outra do ensino de Ciências e da História da
+      Ciência — e é essa separação que fazemos aqui.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="/blog">Ler o blog</a>
+      <a class="btn btn-ghost" href="/sobre">Quem somos</a>
+    </div>
+  </div>
+</section>
+
+<section class="section overlap">
+  <div class="wrap duo-grid">
+    <% pessoas.forEach(p => { %>
+      <article class="duo-card" style="--accent: <%= p.accent %>">
+        <a class="duo-portrait" href="/sobre/<%= p.slug %>">
+          <% if (p.portrait) { %>
+            <img src="<%= p.portrait %>" alt="Retrato de <%= p.short_name %>">
+          <% } else { %><span class="portrait-fallback"><%= p.initials %></span><% } %>
+        </a>
+        <div class="duo-body">
+          <h2><a href="/sobre/<%= p.slug %>"><%= p.short_name %></a></h2>
+          <p class="duo-role"><%= p.role %></p>
+          <% if (p.linhas.length) { %>
+            <div class="filters" style="margin:.9rem 0 0">
+              <% p.linhas.slice(0, 3).forEach(l => { %>
+                <span class="chip chip-plain"><%= l.icon %> <%= l.title.length > 34 ? l.title.slice(0, 34).replace(/\s\S*$/, '') + '…' : l.title %></span>
+              <% }) %>
+            </div>
+          <% } %>
+          <div class="hero-actions" style="margin-top:1rem">
+            <a class="btn btn-ghost btn-sm" href="/sobre/<%= p.slug %>">Trajetória</a>
+            <% if (p.posts) { %>
+              <a class="btn btn-ghost btn-sm" href="/blog?quem=<%= p.slug %>">Textos (<%= p.posts %>)</a>
+            <% } %>
+          </div>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+
+  <div class="wrap" style="margin-top:2rem">
+    <div class="stat-strip">
+      <div class="stat"><b><%= stats.publications %></b><span>publicações somadas</span></div>
+      <div class="stat"><b><%= stats.years %></b><span>anos de pesquisa</span></div>
+      <div class="stat"><b><%= stats.orientations %></b><span>teses e dissertações orientadas</span></div>
+      <div class="stat"><b><%= stats.posts %></b><span>textos no blog</span></div>
+    </div>
+  </div>
+</section>
+
+<% if (featured.length) { %>
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Em destaque</p>
+        <h2>Leituras para começar por aqui</h2>
+      </div>
+    </div>
+    <div class="grid">
+      <% featured.forEach(post => { %>
+        <article class="card card-feature <%= post.cover ? 'has-cover' : '' %>">
+          <% if (post.cover) { %>
+            <a class="card-cover" href="/blog/<%= post.slug %>"><img src="<%= post.cover %>" alt="" loading="lazy"></a>
+          <% } %>
+          <div class="card-body">
+            <% if (post.category_name) { %>
+              <a class="chip" href="/blog?categoria=<%= post.category_slug %>"
+                 style="--accent: <%= post.category_color %>"><%= post.category_name %></a>
+            <% } %>
+            <h3 style="margin-top:.8rem"><a href="/blog/<%= post.slug %>"><%= post.title %></a></h3>
+            <p><%= post.subtitle || post.excerpt %></p>
+            <div class="card-meta">
+              <time datetime="<%= post.published_at %>"><%= post.dateLabel %></time>
+              <span>&middot;</span><span><%= post.reading_time %> min</span>
+            </div>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<% if (recent.length) { %>
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">No blog</p>
+        <h2>Publicações recentes</h2>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="/blog">Ver todos</a>
+    </div>
+    <div class="grid grid-3">
+      <% recent.forEach(post => { %><%- include('../partials/post-card', { post }) %><% }) %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<section class="section" style="background:var(--paper-2);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">O que fazemos</p>
+        <h2>Linhas de pesquisa e atuação</h2>
+        <p>De um lado o laboratório e o campo; do outro a sala de aula e o livro didático.</p>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="/pesquisa">Detalhes</a>
+    </div>
+
+    <% pessoas.forEach(p => { %>
+      <% const minhas = lines.filter(l => l.person_id === p.id); %>
+      <% if (minhas.length) { %>
+        <div class="linhas-de" style="--accent: <%= p.accent %>">
+          <h3 class="linhas-titulo">
+            <%- include('../partials/pessoa-avatar', { p, tamanho: 32 }) %>
+            <a href="/sobre/<%= p.slug %>"><%= p.short_name %></a>
+          </h3>
+          <div class="grid grid-3">
+            <% minhas.forEach(line => { %>
+              <div class="line-card">
+                <div class="icon"><%= line.icon || '🔬' %></div>
+                <h3><%= line.title %></h3>
+                <p><%= line.summary.replace(/\*\*[^*]*\*\*/g, '').length > 150
+                       ? line.summary.replace(/\*\*[^*]*\*\*/g, '').slice(0, 150) + '…'
+                       : line.summary.replace(/\*\*[^*]*\*\*/g, '') %></p>
+                <% if (line.keywords) { %><div class="keys"><%= line.keywords %></div><% } %>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="callout">
+      <p class="eyebrow" style="justify-content:center">Divulgação científica</p>
+      <h2 style="margin-bottom:.5rem">A ciência precisa sair do laboratório</h2>
+      <p class="muted" style="max-width:60ch;margin:0 auto 1.5rem">
+        Uma de nós levou por vinte anos o MEDensina a escolas de Manaus; a outra passou
+        quase três décadas em sala de aula e escreveu coleções didáticas de Ciências.
+        É a mesma motivação que sustenta este blog.
+      </p>
+      <a class="btn btn-primary" href="/extensao">Conhecer os projetos de extensão</a>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

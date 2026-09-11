@@ -1,0 +1,123 @@
+<%- include('partials/head') %>
+<%- include('partials/nav') %>
+
+<div class="topbar">
+  <h1>Conteúdo acadêmico</h1>
+  <div class="spacer"></div>
+  <span class="muted small">Tudo o que aparece nas páginas Sobre, Pesquisa, Publicações e Extensão.</span>
+</div>
+
+<div class="tabs">
+  <% secoes.forEach(s => { %>
+    <a class="<%= key === s.key ? 'is-active' : '' %>" href="/admin/curriculo/<%= s.key %>"><%= s.label %></a>
+  <% }) %>
+</div>
+<div class="tabs" style="margin-top:-.5rem">
+  <span class="muted small" style="align-self:center;margin-right:.35rem">De quem:</span>
+  <a class="<%= !quem ? 'is-active' : '' %>" href="/admin/curriculo/<%= key %>">
+    Ambas (<%= contagens.reduce((t, c) => t + c.n, 0) %>)
+  </a>
+  <% pessoas.forEach(p => { %>
+    <a class="<%= quem === p.id ? 'is-active' : '' %>" href="/admin/curriculo/<%= key %>?quem=<%= p.id %>">
+      <%= p.short_name %> (<%= (contagens.find(c => c.person_id === p.id) || { n: 0 }).n %>)
+    </a>
+  <% }) %>
+</div>
+
+
+<div class="cols cols-main">
+  <div class="panel">
+    <div class="panel-head">
+      <h2><%= cfg.label %></h2>
+      <div class="spacer"></div>
+      <span class="muted small"><%= rows.length %> registro(s)</span>
+    </div>
+
+    <% if (rows.length) { %>
+      <table class="list">
+        <tbody>
+          <% rows.forEach(r => { %>
+            <tr>
+              <td>
+                <strong><%= r.title || r.name %></strong>
+                <div class="muted small">
+                  <% if (r.year) { %><%= r.year %> · <% } %>
+                  <% if (r.period) { %><%= r.period %> · <% } %>
+                  <% if (r.venue) { %><%= r.venue %><% } %>
+                  <% if (r.org) { %><%= r.org %><% } %>
+                  <% if (r.summary) { %><%= r.summary.slice(0, 90) %>…<% } %>
+                  <% if (r.description && !r.summary) { %><%= r.description.slice(0, 90) %>…<% } %>
+                </div>
+              </td>
+              <td style="text-align:right;white-space:nowrap">
+                <a class="btn btn-ghost btn-sm" href="/admin/curriculo/<%= key %>?editar=<%= r.id %>">editar</a>
+                <form method="post" action="/admin/curriculo/<%= key %>/<%= r.id %>/excluir"
+                      style="display:inline" data-confirm="Excluir este registro?">
+                  <input type="hidden" name="_csrf" value="<%= csrf %>">
+                  <button class="btn btn-danger btn-sm">excluir</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <div class="empty-state">
+        <div class="big">🎓</div>
+        <p>Nenhum registro nesta seção ainda.</p>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="side-panel">
+    <div class="panel">
+      <h3><%= editing ? 'Editar registro' : 'Adicionar registro' %></h3>
+      <form method="post" action="/admin/curriculo/<%= key %>/salvar">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <input type="hidden" name="id" value="<%= editing ? editing.id : '' %>">
+
+        <% cfg.fields.forEach(f => { %>
+          <div class="field">
+            <label for="f-<%= f.name %>"><%= f.label %><%= f.required ? ' *' : '' %></label>
+            <% const val = editing ? (editing[f.name] ?? '') : ''; %>
+            <% if (f.type === 'textarea') { %>
+              <textarea id="f-<%= f.name %>" name="<%= f.name %>" rows="3" <%= f.required ? 'required' : '' %>><%= val %></textarea>
+            <% } else if (f.type === 'pessoa') { %>
+              <select name="<%= f.name %>" id="f-<%= f.name %>">
+                <% pessoas.forEach(p => { %>
+                  <option value="<%= p.id %>"
+                    <%= String((editing ? editing[f.name] : (quem || pessoas[0].id))) === String(p.id) ? 'selected' : '' %>>
+                    <%= p.short_name %>
+                  </option>
+                <% }) %>
+              </select>
+            <% } else if (f.type === 'select') { %>
+              <select id="f-<%= f.name %>" name="<%= f.name %>">
+                <% f.options.forEach(o => { %>
+                  <option value="<%= o %>" <%= String(val) === o ? 'selected' : '' %>><%= o %></option>
+                <% }) %>
+              </select>
+            <% } else if (f.type === 'checkbox') { %>
+              <label class="check">
+                <input type="checkbox" name="<%= f.name %>" value="1" <%= val ? 'checked' : '' %>>
+                <span>sim</span>
+              </label>
+            <% } else { %>
+              <input id="f-<%= f.name %>" type="<%= f.type %>" name="<%= f.name %>"
+                     value="<%= val %>" <%= f.required ? 'required' : '' %>>
+            <% } %>
+          </div>
+        <% }) %>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" type="submit"><%= editing ? 'Salvar alterações' : 'Adicionar' %></button>
+          <% if (editing) { %>
+            <a class="btn btn-ghost" href="/admin/curriculo/<%= key %>">cancelar</a>
+          <% } %>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

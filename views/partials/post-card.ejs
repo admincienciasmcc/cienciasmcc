@@ -1,0 +1,27 @@
+<article class="card">
+  <% if (post.cover) { %>
+    <a class="card-cover" href="/blog/<%= post.slug %>">
+      <img src="<%= post.cover %>" alt="" loading="lazy">
+    </a>
+  <% } %>
+  <div class="card-body">
+    <% if (post.category_name) { %>
+      <a class="chip" href="/blog?categoria=<%= post.category_slug %>"
+         style="--accent: <%= post.category_color || '#14532d' %>"><%= post.category_name %></a>
+    <% } %>
+    <h3 style="margin-top:.7rem"><a href="/blog/<%= post.slug %>"><%= post.title %></a></h3>
+    <p><%= post.excerpt %></p>
+    <div class="card-meta">
+      <% if (post.pessoa) { %>
+        <a class="card-author" href="/blog?quem=<%= post.pessoa.slug %>">
+          <%- include('pessoa-avatar', { p: post.pessoa, tamanho: 22 }) %>
+          <%= post.pessoa.short_name.split(' ')[0] %>
+        </a>
+        <span>&middot;</span>
+      <% } %>
+      <time datetime="<%= post.published_at %>"><%= post.dateLabel %></time>
+      <span>&middot;</span>
+      <span><%= post.reading_time %> min</span>
+    </div>
+  </div>
+</article>

@@ -1,0 +1,79 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Pesquisa</p>
+    <h1>Linhas de pesquisa e projetos</h1>
+    <p class="hero-lead">
+      De um lado, como o sistema imune responde àquilo que a Amazônia oferece — venenos,
+      parasitas, plantas, estresse. De outro, como esse conhecimento chega à sala de aula e
+      ao livro didático. São as duas metades da mesma pergunta: o que a ciência devolve
+      a quem vive aqui.
+    </p>
+
+    <%- include('../partials/filtro-pessoa', { base: '/pesquisa', filtro }) %>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="grid grid-3">
+      <% lines.forEach(line => { %>
+        <div class="line-card">
+          <div class="icon"><%= line.icon || '🔬' %></div>
+          <h3><%= line.title %></h3>
+          <div class="line-summary"><%- line.summaryHtml %></div>
+          <% if (line.keywords) { %><div class="keys"><strong>Palavras-chave:</strong> <%= line.keywords %></div><% } %>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--paper-2);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Em campo e no laboratório</p>
+        <h2>Projetos de pesquisa</h2>
+        <p>Projetos coordenados ou integrados, com financiamento de CNPq, FAPEAM e parcerias internacionais.</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <% projects.forEach(p => { %>
+        <article class="project-card">
+          <div class="period"><%= p.period %><% if (p.status) { %> &middot; <%= p.status %><% } %></div>
+          <h3><%= p.title %></h3>
+          <% if (p.description) { %>
+            <div class="project-desc"><%- p.descriptionHtml %></div>
+          <% } %>
+          <div class="tags">
+            <% if (p.role) { %><span class="chip chip-plain"><%= p.role %></span><% } %>
+            <% if (p.funder) { %><span class="chip chip-plain"><%= p.funder %></span><% } %>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="callout">
+      <p class="eyebrow" style="justify-content:center">Formação de pesquisadores</p>
+      <h2 style="margin-bottom:.5rem">
+        <%= (totais.doutorados || 0) %> teses de doutorado e <%= (totais.mestrados || 0) %> dissertações de mestrado orientadas
+      </h2>
+      <p class="muted" style="max-width:62ch;margin:0 auto 1.5rem">
+        Somam-se a isso <%= (totais.ic || 0) %> orientações de iniciação científica e dezenas de
+        participações em bancas. Boa parte do que produzi está na trajetória dessas pessoas.
+      </p>
+      <a class="btn btn-primary" href="/orientacoes">Ver todas as orientações</a>
+      <a class="btn btn-ghost" href="/publicacoes">Ver publicações</a>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

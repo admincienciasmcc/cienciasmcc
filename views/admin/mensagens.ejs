@@ -1,0 +1,61 @@
+<%- include('partials/head') %>
+<%- include('partials/nav') %>
+
+<div class="topbar">
+  <h1>Caixa de entrada</h1>
+</div>
+
+<div class="cols cols-main">
+  <div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Mensagens do formulário de contato</h2>
+        <div class="spacer"></div>
+        <span class="muted small"><%= messages.length %> no total</span>
+      </div>
+
+      <% if (!messages.length) { %>
+        <div class="empty-state">
+          <div class="big">✉️</div>
+          <h3>Nenhuma mensagem ainda</h3>
+        </div>
+      <% } %>
+
+      <% messages.forEach(m => { %>
+        <div class="comment-card">
+          <div class="who">
+            <strong><%= m.name %></strong>
+            <a href="mailto:<%= m.email %>?subject=Re: <%= encodeURIComponent(m.subject || 'contato pelo site') %>"><%= m.email %></a>
+            <span class="muted small">· <%= fmt(m.created_at) %></span>
+            <% if (!m.read_at) { %><span class="tag tag-green">nova</span><% } %>
+          </div>
+          <% if (m.subject) { %><div style="font-weight:600;margin-bottom:.35rem"><%= m.subject %></div><% } %>
+          <blockquote style="white-space:pre-wrap"><%= m.body %></blockquote>
+          <div class="btn-row">
+            <a class="btn btn-primary btn-sm"
+               href="mailto:<%= m.email %>?subject=Re: <%= encodeURIComponent(m.subject || 'seu contato pelo site') %>">Responder</a>
+            <form method="post" action="/admin/mensagens/<%= m.id %>/excluir" data-confirm="Excluir esta mensagem?">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button class="btn btn-danger btn-sm">Excluir</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <div class="side-panel">
+    <div class="panel">
+      <h3>Inscritos na newsletter</h3>
+      <p class="muted small"><%= subscribers.length %> pessoa(s) pediram para receber novos posts.</p>
+      <% if (subscribers.length) { %>
+        <textarea rows="8" readonly style="font-size:.78rem"><%= subscribers.map(s => s.email).join('\n') %></textarea>
+        <p class="muted small" style="margin-top:.5rem">
+          Copie esta lista para o serviço de e-mail que você usar.
+        </p>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

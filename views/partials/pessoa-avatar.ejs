@@ -1,0 +1,8 @@
+<%# avatar redondo de uma autora — uso: include('../partials/pessoa-avatar', { p, tamanho: 48 }) %>
+<span class="avatar" style="--av: <%= tamanho || 44 %>px; --accent: <%= p.accent || '#14532d' %>">
+  <% if (p.portrait) { %>
+    <img src="<%= p.portrait %>" alt="<%= p.short_name %>" loading="lazy">
+  <% } else { %>
+    <span class="avatar-initials"><%= p.initials || p.short_name.slice(0, 2) %></span>
+  <% } %>
+</span>

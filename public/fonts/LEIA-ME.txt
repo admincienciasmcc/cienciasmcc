@@ -1,0 +1,13 @@
+Lato — Łukasz Dziedzic (tyPoland)
+Licença: SIL Open Font License 1.1 — https://scripts.sil.org/OFL
+
+Os arquivos .woff2 desta pasta são subconjuntos latinos gerados a partir das
+fontes TrueType originais (pesos 300, 400, 400 itálico, 600 e 700). Ficam
+hospedados no próprio site: nenhuma requisição sai para servidores de terceiros
+quando alguém abre uma página.
+
+Para regerar, a partir dos .ttf originais:
+  pyftsubset Lato-Regular.ttf \
+    --unicodes="U+0000-00FF,U+0100-017F,U+2000-206F,U+20A0-20BF" \
+    --layout-features="kern,liga,clig,calt,ccmp,locl,mark,mkmk" \
+    --flavor=woff2 --output-file=lato-400.woff2

@@ -1,0 +1,352 @@
+<%- include('partials/head') %>
+<%- include('partials/nav') %>
+
+<form method="post" action="/admin/posts/salvar" id="post-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <input type="hidden" name="id" value="<%= post ? post.id : '' %>">
+
+  <div class="topbar">
+    <div>
+      <h1 style="font-size:1.25rem"><%= post ? 'Editando post' : 'Novo post' %></h1>
+      <p class="muted small" style="margin:0">
+        <% if (post) { %>
+          Criado em <%= fmt(post.created_at) %> · última alteração <%= fmt(post.updated_at) %>
+        <% } else { %>
+          Escreva em Markdown. O painel à direita analisa o texto enquanto você digita.
+        <% } %>
+      </p>
+    </div>
+    <div class="spacer"></div>
+    <% if (post && post.status === 'published') { %>
+      <a class="btn btn-ghost" href="/blog/<%= post.slug %>" target="_blank">Ver no site ↗</a>
+    <% } %>
+    <button class="btn btn-primary" type="submit">Salvar</button>
+  </div>
+
+  <div class="editor-grid">
+    <!-- ================================================== coluna do texto -->
+    <div>
+      <div class="panel">
+        <input class="title-input" type="text" name="title" id="title" required
+               placeholder="Título do post…" value="<%= post ? post.title : '' %>">
+        <input type="text" name="subtitle" id="subtitle" placeholder="Subtítulo (opcional)"
+               value="<%= post ? post.subtitle : '' %>"
+               style="border:0;background:transparent;padding:.2rem 0;font-size:1rem;color:var(--a-ink-2)">
+
+        <div class="muted small" style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem">
+          <span>Endereço: /blog/<input type="text" name="slug" id="slug" value="<%= post ? post.slug : '' %>"
+            style="display:inline;width:auto;min-width:220px;padding:.15rem .4rem;font-size:.78rem"></span>
+          <span id="title-len"></span>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:1.25rem;padding:0;overflow:hidden">
+        <div class="toolbar">
+          <button type="button" data-md="bold" title="Negrito"><b>B</b></button>
+          <button type="button" data-md="italic" title="Itálico"><i>I</i></button>
+          <span class="sep"></span>
+          <button type="button" data-md="h2">H2</button>
+          <button type="button" data-md="h3">H3</button>
+          <span class="sep"></span>
+          <button type="button" data-md="link">🔗 Link</button>
+          <button type="button" data-md="quote">❝ Citação</button>
+          <button type="button" data-md="list">• Lista</button>
+          <button type="button" data-md="image">🖼 Imagem</button>
+          <span class="sep"></span>
+          <button type="button" id="toggle-preview">👁 Pré-visualizar</button>
+          <span class="spacer" style="margin-left:auto"></span>
+          <span class="muted small" id="word-count" style="align-self:center;padding-right:.4rem"></span>
+        </div>
+        <textarea name="body_md" id="body_md"
+                  placeholder="Escreva aqui. Use ## para subtítulos, **negrito**, [texto](link)…"><%= post ? post.body_md : '' %></textarea>
+        <div class="preview" id="preview" hidden></div>
+      </div>
+
+      <!-- galeria de fotos do post -->
+      <div class="panel" style="margin-top:1.25rem">
+        <div class="panel-head">
+          <h3>🖼️ Fotos deste post</h3>
+          <div class="spacer"></div>
+          <span class="muted small" id="gallery-count"></span>
+        </div>
+        <p class="muted small">
+          Além da capa, você pode anexar quantas fotos quiser. Elas aparecem em uma
+          galeria no fim do texto, cada uma com sua legenda e crédito.
+        </p>
+
+        <div class="btn-row" style="margin-bottom:1rem">
+          <button class="btn btn-primary btn-sm" type="button" id="btn-add-gallery">＋ Escolher da galeria</button>
+          <a class="btn btn-ghost btn-sm" href="/admin/midia" target="_blank">Enviar novas fotos ↗</a>
+        </div>
+
+        <div id="gallery-list"></div>
+
+        <template id="gallery-row-template">
+          <div class="gal-row">
+            <img class="gal-thumb" src="" alt="">
+            <div class="gal-fields">
+              <input type="hidden" name="gallery_url[]" value="">
+              <input type="text" name="gallery_caption[]" placeholder="Legenda — o que esta foto mostra?">
+              <input type="text" name="gallery_credit[]" placeholder="Crédito da foto (autor, licença)">
+            </div>
+            <div class="gal-actions">
+              <button type="button" class="btn btn-ghost btn-sm" data-gal="up" title="Subir">↑</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-gal="down" title="Descer">↓</button>
+              <button type="button" class="btn btn-danger btn-sm" data-gal="remove" title="Remover">✕</button>
+            </div>
+          </div>
+        </template>
+
+        <div id="gallery-empty" class="empty-state" style="padding:2rem 1rem">
+          <div class="big">📷</div>
+          <p class="small">Nenhuma foto anexada ainda.</p>
+        </div>
+      </div>
+
+      <!-- fonte externa / comentar uma leitura -->
+      <div class="panel" style="margin-top:1.25rem">
+        <div class="panel-head">
+          <h3>📎 Comentando um material que li</h3>
+        </div>
+        <p class="muted small">
+          Preencha quando o post comentar um artigo, notícia ou estudo. A referência aparece
+          no fim do texto publicado.
+        </p>
+        <div class="cols cols-2">
+          <div class="field">
+            <label for="source_title">Título da fonte</label>
+            <input id="source_title" type="text" name="source_title" value="<%= post ? post.source_title : '' %>">
+          </div>
+          <div class="field">
+            <label for="source_url">Endereço (URL)</label>
+            <input id="source_url" type="url" name="source_url" value="<%= post ? post.source_url : '' %>"
+                   placeholder="https://…">
+          </div>
+        </div>
+        <div class="field">
+          <label for="doi">DOI (se for artigo científico)</label>
+          <input id="doi" type="text" name="doi" value="<%= post ? post.doi : '' %>" placeholder="10.1016/j.toxicon…">
+        </div>
+
+        <div class="<%= aiEnabled ? 'ai-box' : 'panel ai-off' %>" style="margin-top:.5rem">
+          <h3>✨ Gerar um rascunho a partir dessa fonte</h3>
+          <% if (aiEnabled) { %>
+            <div class="field" style="margin-bottom:.6rem">
+              <label for="ai-notes">Suas anotações (o que achou, o que quer destacar)</label>
+              <textarea id="ai-notes" rows="3" placeholder="Ex.: interessante o dado sobre tempo até o atendimento; quero ligar com nosso trabalho no Amazonas."></textarea>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary btn-sm" type="button" id="btn-draft">Escrever rascunho</button>
+              <span class="muted small" id="draft-status"></span>
+            </div>
+            <p class="muted small" style="margin:.6rem 0 0">
+              O rascunho é um ponto de partida e substitui o texto atual. Revise sempre —
+              onde faltar informação, o assistente marca <code>[verificar no artigo original]</code>.
+            </p>
+          <% } else { %>
+            <p class="small" style="margin:0">
+              Disponível quando o assistente de IA estiver configurado
+              (variável <code>ANTHROPIC_API_KEY</code>).
+            </p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ coluna do assistente -->
+    <div class="side-panel">
+      <!-- publicação -->
+      <div class="panel">
+        <h3>Publicação</h3>
+        <div class="field">
+          <label for="person_id">Quem assina este texto</label>
+          <select name="person_id" id="person_id">
+            <% pessoas.forEach(p => { %>
+              <option value="<%= p.id %>"
+                <%= String(post ? post.person_id : pessoas[0].id) === String(p.id) ? 'selected' : '' %>>
+                <%= p.short_name %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="field">
+          <label for="status">Situação</label>
+          <select name="status" id="status">
+            <option value="draft" <%= !post || post.status === 'draft' ? 'selected' : '' %>>Rascunho</option>
+            <option value="published" <%= post && post.status === 'published' ? 'selected' : '' %>>Publicado</option>
+            <option value="scheduled" <%= post && post.status === 'scheduled' ? 'selected' : '' %>>Agendar</option>
+          </select>
+        </div>
+        <div class="field" id="date-field" <%= post && post.status === 'scheduled' ? '' : '' %>>
+          <label for="published_at">Data de publicação</label>
+          <input id="published_at" type="datetime-local" name="published_at"
+                 value="<%= post && post.published_at ? String(post.published_at).replace(' ', 'T').slice(0, 16) : '' %>">
+          <div class="hint">Deixe vazio para usar o momento em que salvar.</div>
+        </div>
+        <label class="check">
+          <input type="checkbox" name="featured" value="1" <%= post && post.featured ? 'checked' : '' %>>
+          <span>Destacar na página inicial</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" name="allow_comments" value="1" <%= !post || post.allow_comments ? 'checked' : '' %>>
+          <span>Permitir comentários</span>
+        </label>
+        <button class="btn btn-primary" type="submit" style="width:100%;margin-top:.5rem">Salvar post</button>
+      </div>
+
+      <!-- análise automática -->
+      <div class="panel">
+        <div class="panel-head">
+          <h3>🔎 Análise do texto</h3>
+          <div class="spacer"></div>
+          <button class="btn btn-ghost btn-sm" type="button" id="btn-analyze">atualizar</button>
+        </div>
+
+        <div class="score-ring">
+          <span class="num" id="score-num"><%= audit ? audit.score : '—' %></span>
+          <div class="score-bar"><i id="score-bar" style="width:<%= audit ? audit.score : 0 %>%"></i></div>
+        </div>
+
+        <div class="muted small" id="text-stats" style="margin-bottom:.75rem">
+          <% if (audit) { %>
+            <%= audit.stats.wordCount %> palavras · <%= audit.stats.readingTime %> min ·
+            legibilidade <%= audit.stats.level %>
+          <% } %>
+        </div>
+
+        <div id="audit-list">
+          <% if (audit) { audit.items.forEach(item => { %>
+            <div class="audit-item <%= item.level %>">
+              <span class="dot"></span>
+              <span><%= item.label %><% if (item.hint) { %><span class="hint"><%= item.hint %></span><% } %></span>
+            </div>
+          <% }) } else { %>
+            <p class="muted small">Comece a escrever para ver a análise.</p>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- resumo e seo -->
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Resumo e busca</h3>
+          <div class="spacer"></div>
+          <button class="btn btn-ghost btn-sm" type="button" id="btn-summary">gerar</button>
+        </div>
+        <div class="field">
+          <label for="excerpt">Resumo (aparece na lista de posts)</label>
+          <textarea id="excerpt" name="excerpt" rows="3" maxlength="400"><%= post ? post.excerpt : '' %></textarea>
+        </div>
+        <div class="field">
+          <label for="seo_description">Descrição para o Google</label>
+          <textarea id="seo_description" name="seo_description" rows="2" maxlength="200"><%= post ? post.seo_description : '' %></textarea>
+          <div class="hint"><span id="seo-len">0</span>/155 caracteres</div>
+        </div>
+        <div class="field">
+          <label for="seo_title">Título para o Google (opcional)</label>
+          <input id="seo_title" type="text" name="seo_title" value="<%= post ? post.seo_title : '' %>">
+        </div>
+      </div>
+
+      <!-- categoria e tags -->
+      <div class="panel">
+        <h3>Organização</h3>
+        <div class="field">
+          <label for="category_id">Categoria</label>
+          <select name="category_id" id="category_id">
+            <option value="">— sem categoria —</option>
+            <% categories.forEach(c => { %>
+              <option value="<%= c.id %>" <%= post && post.category_id === c.id ? 'selected' : '' %>><%= c.name %></option>
+            <% }) %>
+          </select>
+          <div class="hint" id="cat-suggest"></div>
+        </div>
+        <div class="field">
+          <label for="tags">Tags (separadas por vírgula)</label>
+          <input id="tags" type="text" name="tags" value="<%= tagList %>" list="tag-options">
+          <datalist id="tag-options">
+            <% allTags.forEach(t => { %><option value="<%= t %>"></option><% }) %>
+          </datalist>
+          <div class="hint">Sugestões: <span id="tag-suggest" class="muted">analise o texto para ver</span></div>
+        </div>
+      </div>
+
+      <!-- capa -->
+      <div class="panel">
+        <h3>Imagem de capa</h3>
+        <div class="field">
+          <input type="text" name="cover" id="cover" placeholder="/uploads/…"
+                 value="<%= post ? post.cover : '' %>">
+        </div>
+        <div id="cover-preview" style="margin-bottom:.75rem">
+          <% if (post && post.cover) { %><img src="<%= post.cover %>" alt="" style="border-radius:8px"><% } %>
+        </div>
+        <div class="field">
+          <label for="cover_credit">Crédito da imagem</label>
+          <input id="cover_credit" type="text" name="cover_credit" value="<%= post ? post.cover_credit : '' %>">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost btn-sm" type="button" id="btn-pick-cover">Escolher da galeria</button>
+          <a class="btn btn-ghost btn-sm" href="/admin/midia" target="_blank">Enviar nova</a>
+        </div>
+      </div>
+
+      <!-- assistente de escrita -->
+      <div class="<%= aiEnabled ? 'ai-box' : 'panel ai-off' %>">
+        <h3>✨ Assistente de escrita</h3>
+        <% if (aiEnabled) { %>
+          <p class="small" style="margin:0">Sempre revise antes de publicar.</p>
+          <div class="btn-row">
+            <button class="btn btn-ghost btn-sm" type="button" data-ai="revisar">Revisar</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-ai="simplificar">Simplificar</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-ai="encurtar">Encurtar</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-ai="expandir">Desenvolver</button>
+          </div>
+          <div class="btn-row" style="margin-top:.4rem">
+            <button class="btn btn-ghost btn-sm" type="button" id="btn-ai-meta">Resumo, tags e títulos</button>
+          </div>
+          <div class="small" id="ai-status" style="margin-top:.6rem"></div>
+          <div id="ai-titles" style="margin-top:.5rem"></div>
+        <% } else { %>
+          <p class="small" style="margin:0">
+            Desligado. Defina <code>ANTHROPIC_API_KEY</code> no ambiente para ativar
+            revisão, simplificação e geração de rascunhos.
+          </p>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- fotos já anexadas, lidas pelo JavaScript -->
+<script type="application/json" id="gallery-data"><%- JSON.stringify(gallery) %></script>
+
+<!-- biblioteca de imagens -->
+<dialog id="media-dialog" style="border:0;border-radius:14px;padding:0;max-width:860px;width:92vw">
+  <div class="panel" style="border:0;max-height:80vh;overflow:auto">
+    <div class="panel-head">
+      <h3 id="media-dialog-title">Escolha uma imagem</h3>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('media-dialog').close()">fechar</button>
+    </div>
+    <p class="muted small" id="media-dialog-hint"></p>
+    <% if (media.length) { %>
+      <div class="media-grid">
+        <% media.forEach(m => { %>
+          <div class="media-item media-pick" data-src="<%= m.filename %>"
+               data-alt="<%= m.alt %>" data-credit="<%= m.credit || '' %>">
+            <img src="<%= m.filename %>" alt="<%= m.alt %>" loading="lazy">
+            <div class="meta"><%= (m.alt || m.original).slice(0, 40) %></div>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="empty-state">
+        <div class="big">🖼️</div>
+        <p>Nenhuma imagem ainda. <a href="/admin/midia">Envie a primeira</a>.</p>
+      </div>
+    <% } %>
+  </div>
+</dialog>
+
+<%- include('partials/foot') %>

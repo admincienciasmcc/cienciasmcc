@@ -1,0 +1,61 @@
+<%- include('partials/head') %>
+<%- include('partials/nav') %>
+
+<div class="topbar">
+  <h1>Imagens</h1>
+  <div class="spacer"></div>
+  <span class="muted small">JPG, PNG, GIF, WebP ou SVG · até 8 MB cada</span>
+</div>
+
+<div class="panel">
+  <form method="post" action="/admin/midia/enviar" enctype="multipart/form-data" class="inline-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="file" name="arquivos" accept="image/*" multiple required style="flex:1">
+    <button class="btn btn-primary" type="submit">Enviar</button>
+  </form>
+  <p class="muted small" style="margin:.75rem 0 0">
+    Depois de enviar, clique numa imagem para copiar o endereço e usá-lo como capa
+    ou dentro de um post.
+  </p>
+</div>
+
+<div class="panel">
+  <% if (media.length) { %>
+    <div class="media-grid">
+      <% media.forEach(m => { %>
+        <div class="media-item">
+          <img src="<%= m.filename %>" alt="<%= m.alt %>" loading="lazy">
+          <div class="meta">
+            <div style="word-break:break-all"><%= m.original %></div>
+            <div><%= Math.round(m.size / 1024) %> KB</div>
+            <input type="text" readonly value="<%= m.filename %>"
+                   onclick="this.select();document.execCommand('copy')"
+                   style="margin-top:.4rem;font-size:.7rem;padding:.25rem .4rem"
+                   title="Clique para copiar">
+            <form method="post" action="/admin/midia/<%= m.id %>/alt" style="margin-top:.35rem">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <input type="text" name="alt" value="<%= m.alt %>" placeholder="Descrição (acessibilidade)"
+                     style="font-size:.7rem;padding:.25rem .4rem">
+              <input type="text" name="credit" value="<%= m.credit || '' %>" placeholder="Crédito da foto"
+                     style="font-size:.7rem;padding:.25rem .4rem;margin-top:.25rem">
+              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:.25rem">salvar textos</button>
+            </form>
+            <form method="post" action="/admin/midia/<%= m.id %>/excluir" style="margin-top:.35rem"
+                  data-confirm="Excluir esta imagem?">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button class="btn btn-danger btn-sm" style="width:100%">excluir</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="empty-state">
+      <div class="big">🖼️</div>
+      <h3>Nenhuma imagem enviada</h3>
+      <p>Use o formulário acima para começar sua galeria.</p>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/foot') %>

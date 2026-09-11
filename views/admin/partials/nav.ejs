@@ -1,0 +1,39 @@
+<div class="shell">
+<aside class="side">
+  <a class="side-brand" href="/admin">
+    <span class="mark">C</span>
+    <span><b>Painel</b><small><%= settings.site_title %></small></span>
+  </a>
+
+  <div class="side-label">Conteúdo</div>
+  <a class="nav-item <%= path === '/admin' ? 'is-active' : '' %>" href="/admin">📊 Visão geral</a>
+  <a class="nav-item <%= path.startsWith('/admin/posts') ? 'is-active' : '' %>" href="/admin/posts">📝 Posts</a>
+  <a class="nav-item <%= path.startsWith('/admin/comentarios') ? 'is-active' : '' %>" href="/admin/comentarios">
+    💬 Comentários
+    <% if (typeof pendingBadge !== 'undefined' && pendingBadge) { %><span class="badge"><%= pendingBadge %></span><% } %>
+  </a>
+  <a class="nav-item <%= path.startsWith('/admin/midia') ? 'is-active' : '' %>" href="/admin/midia">🖼️ Imagens</a>
+
+  <div class="side-label">Currículo</div>
+  <a class="nav-item <%= path.startsWith('/admin/curriculo') ? 'is-active' : '' %>" href="/admin/curriculo/publicacoes">🎓 Conteúdo acadêmico</a>
+
+  <div class="side-label">Caixa de entrada</div>
+  <a class="nav-item <%= path.startsWith('/admin/mensagens') ? 'is-active' : '' %>" href="/admin/mensagens">✉️ Mensagens</a>
+
+  <div class="side-label">Configuração</div>
+  <a class="nav-item <%= path.startsWith('/admin/ajustes') ? 'is-active' : '' %>" href="/admin/ajustes">⚙️ Ajustes</a>
+  <a class="nav-item" href="/" target="_blank">🌐 Ver o site</a>
+
+  <div class="side-foot">
+    <div style="margin-bottom:.6rem"><%= user.name %></div>
+    <form method="post" action="/admin/sair">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn btn-ghost btn-sm" type="submit" style="width:100%">Sair</button>
+    </form>
+  </div>
+</aside>
+
+<div class="main">
+<% if (flash) { %>
+  <div class="flash flash-<%= flashType %>"><%= flash %></div>
+<% } %>

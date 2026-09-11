@@ -1,0 +1,71 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Contato</p>
+    <h1>Vamos conversar</h1>
+    <p class="hero-lead" style="max-width:58ch">
+      Respondemos a convites acadêmicos, dúvidas de estudantes e professores, pedidos
+      de entrevista e conversas sobre pesquisa e ensino de Ciências.
+    </p>
+  </div>
+</section>
+
+<section class="section overlap">
+  <div class="wrap grid grid-2" style="gap:3rem;align-items:start">
+    <div>
+      <div class="line-card">
+        <div class="icon">⚠️</div>
+        <h3>Sobre orientações médicas</h3>
+        <p class="small muted" style="margin:0">
+          Não fazemos atendimento clínico nem orientamos casos individuais. Em caso de acidente
+          com animal peçonhento, procure imediatamente o serviço de saúde mais próximo ou
+          ligue <strong>192</strong> (SAMU). Leve, se possível, o animal para identificação —
+          mas nunca se arrisque para capturá-lo.
+        </p>
+      </div>
+
+      <div class="line-card" style="margin-top:1.5rem">
+        <h4 class="eyebrow">Também estamos em</h4>
+        <% pessoas.forEach(p => { %>
+          <p>
+            <strong><%= p.short_name %></strong><br>
+            <% if (p.lattes_url) { %><a href="<%= p.lattes_url %>" target="_blank" rel="noopener">Lattes</a><% } %>
+            <% if (p.orcid_url) { %> · <a href="<%= p.orcid_url %>" target="_blank" rel="noopener">ORCID</a><% } %>
+            · <a href="/sobre/<%= p.slug %>">perfil no site</a>
+          </p>
+        <% }) %>
+        <% if (settings.contact_email) { %><p><a href="mailto:<%= settings.contact_email %>"><%= settings.contact_email %></a></p><% } %>
+      </div>
+    </div>
+
+    <div>
+      <form class="form-card" method="post" action="/contato">
+        <div class="honeypot" aria-hidden="true">
+          <label>Não preencha<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <div class="field">
+          <label for="nome">Seu nome *</label>
+          <input id="nome" type="text" name="nome" required maxlength="100">
+        </div>
+        <div class="field">
+          <label for="email">Seu e-mail *</label>
+          <input id="email" type="email" name="email" required maxlength="150">
+        </div>
+        <div class="field">
+          <label for="assunto">Assunto</label>
+          <input id="assunto" type="text" name="assunto" maxlength="150"
+                 placeholder="Convite, dúvida, imprensa…">
+        </div>
+        <div class="field">
+          <label for="mensagem">Mensagem *</label>
+          <textarea id="mensagem" name="mensagem" required maxlength="5000" style="min-height:180px"></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit">Enviar mensagem</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

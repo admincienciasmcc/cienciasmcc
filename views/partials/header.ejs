@@ -1,0 +1,38 @@
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="/">
+      <span class="brand-duo" aria-hidden="true">
+        <% pessoas.forEach(p => { %>
+          <span class="brand-face" style="--accent: <%= p.accent %>">
+            <% if (p.portrait) { %><img src="<%= p.portrait %>" alt=""><% } else { %><%= p.initials %><% } %>
+          </span>
+        <% }) %>
+      </span>
+      <span class="brand-text">
+        <strong><%= settings.site_title %></strong>
+        <span><%= settings.site_tagline %></span>
+      </span>
+    </a>
+
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-principal" data-nav-toggle>
+      <span data-nav-icon aria-hidden="true">☰</span><span class="sr-only">Abrir menu</span>
+    </button>
+
+    <nav class="nav" id="nav-principal" aria-label="Navegação principal">
+      <a href="/blog" class="<%= path.startsWith('/blog') ? 'is-active' : '' %>">Blog</a>
+      <a href="/sobre" class="<%= path.startsWith('/sobre') ? 'is-active' : '' %>">Quem somos</a>
+      <a href="/pesquisa" class="<%= path === '/pesquisa' ? 'is-active' : '' %>">Pesquisa</a>
+      <a href="/publicacoes" class="<%= path === '/publicacoes' ? 'is-active' : '' %>">Publicações</a>
+      <a href="/orientacoes" class="<%= path === '/orientacoes' ? 'is-active' : '' %>">Orientações</a>
+      <a href="/extensao" class="<%= path === '/extensao' ? 'is-active' : '' %>">Extensão</a>
+      <a href="/contato" class="<%= path === '/contato' ? 'is-active' : '' %>">Contato</a>
+    </nav>
+  </div>
+</header>
+
+<main id="conteudo">
+<% if (flash) { %>
+  <div class="wrap" style="padding-top:1.5rem">
+    <div class="flash flash-<%= flashType %>"><%= flash %></div>
+  </div>
+<% } %>

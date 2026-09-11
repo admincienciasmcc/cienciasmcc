@@ -1,0 +1,51 @@
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h4><%= settings.site_title %></h4>
+        <p class="small muted" style="max-width:40ch">
+          Projeto de divulgação científica idealizado por
+          <% pessoas.forEach((p, i) => { %><a href="/sobre/<%= p.slug %>"
+             style="display:inline"><%= p.short_name %></a><%= i < pessoas.length - 2 ? ', ' : (i === pessoas.length - 2 ? ' e ' : '.') %><% }) %>
+        </p>
+        <h4 style="margin-top:1.5rem">Receber novos posts</h4>
+        <form class="newsletter" method="post" action="/inscrever">
+          <input type="email" name="email" placeholder="seu@email.com" aria-label="Seu e-mail" required>
+          <button class="btn btn-primary btn-sm" type="submit">Inscrever</button>
+        </form>
+      </div>
+
+      <div>
+        <h4>Navegar</h4>
+        <a href="/blog">Blog</a>
+        <a href="/sobre">Sobre</a>
+        <a href="/pesquisa">Linhas de pesquisa</a>
+        <a href="/publicacoes">Publicações</a>
+        <a href="/orientacoes">Orientações</a>
+        <a href="/extensao">Extensão e divulgação</a>
+        <a href="/contato">Contato</a>
+      </div>
+
+      <div>
+        <h4>Perfis acadêmicos</h4>
+        <% if (settings.lattes_url) { %><a href="<%= settings.lattes_url %>" rel="noopener" target="_blank">Currículo Lattes</a><% } %>
+        <% if (settings.orcid_url) { %><a href="<%= settings.orcid_url %>" rel="noopener" target="_blank">ORCID</a><% } %>
+        <% if (settings.scientia_url) { %><a href="<%= settings.scientia_url %>" rel="noopener" target="_blank">Revista Scientia Amazonia</a><% } %>
+        <% if (settings.instagram_url) { %><a href="<%= settings.instagram_url %>" rel="noopener" target="_blank">Instagram</a><% } %>
+        <% if (settings.linkedin_url) { %><a href="<%= settings.linkedin_url %>" rel="noopener" target="_blank">LinkedIn</a><% } %>
+        <a href="/feed.xml">Feed RSS</a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© <%= year %> <%= settings.owner_name %></span>
+      <span>Textos sob licença CC BY-NC 4.0 &middot; <a href="/admin">Área restrita</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/site.js" defer></script>
+</body>
+</html>

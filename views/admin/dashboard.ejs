@@ -1,0 +1,188 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { pendingBadge: counts.pending }) %>
+
+<div class="topbar">
+  <div>
+    <h1>Olá, <%= user.name.split(' ')[0] %> 👋</h1>
+    <p class="muted small" style="margin:0">
+      <% if (counts.pending || counts.messages) { %>
+        Você tem
+        <% if (counts.pending) { %><strong><%= counts.pending %></strong> comentário(s) para revisar<% } %>
+        <% if (counts.pending && counts.messages) { %> e <% } %>
+        <% if (counts.messages) { %><strong><%= counts.messages %></strong> mensagem(ns) nova(s)<% } %>.
+      <% } else { %>
+        Tudo em dia por aqui. Que tal escrever algo novo?
+      <% } %>
+    </p>
+  </div>
+  <div class="spacer"></div>
+  <a class="btn btn-primary" href="/admin/posts/novo">✍️ Escrever post</a>
+</div>
+
+<div class="cols cols-4">
+  <div class="kpi"><b><%= counts.published %></b><span>posts publicados</span></div>
+  <div class="kpi <%= counts.drafts ? 'is-alert' : '' %>"><b><%= counts.drafts %></b><span>rascunhos</span></div>
+  <div class="kpi <%= counts.pending ? 'is-alert' : '' %>"><b><%= counts.pending %></b><span>comentários pendentes</span></div>
+  <div class="kpi"><b><%= counts.views.toLocaleString('pt-BR') %></b><span>leituras acumuladas</span></div>
+</div>
+
+<div class="cols cols-main" style="margin-top:1.25rem">
+  <div>
+    <!-- gráfico -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Leituras nos últimos 14 dias</h2>
+        <div class="spacer"></div>
+        <span class="muted small"><%= days.reduce((s, d) => s + d.n, 0) %> no período</span>
+      </div>
+      <% const maxN = Math.max(1, ...days.map(d => d.n)); %>
+      <div class="spark">
+        <% days.forEach(d => { %>
+          <i style="height:<%= Math.max(3, Math.round((d.n / maxN) * 64)) %>px"
+             title="<%= d.day.split('-').reverse().join('/') %>: <%= d.n %> leitura(s)"></i>
+        <% }) %>
+      </div>
+      <div class="muted small" style="display:flex;justify-content:space-between;margin-top:.5rem">
+        <span><%= days[0].day.slice(8) %>/<%= days[0].day.slice(5, 7) %></span>
+        <span>hoje</span>
+      </div>
+    </div>
+
+    <!-- posts recentes -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Trabalhos recentes</h2>
+        <div class="spacer"></div>
+        <a class="btn btn-ghost btn-sm" href="/admin/posts">Ver todos</a>
+      </div>
+      <% if (recentPosts.length) { %>
+        <table class="list">
+          <thead><tr><th>Título</th><th>Situação</th><th>Leituras</th><th></th></tr></thead>
+          <tbody>
+          <% recentPosts.forEach(p => { %>
+            <tr>
+              <td>
+                <a href="/admin/posts/<%= p.id %>"><%= p.title %></a>
+                <div class="muted small"><%= p.category_name || 'Sem categoria' %> · <%= p.word_count %> palavras</div>
+              </td>
+              <td>
+                <% if (p.status === 'published') { %><span class="tag tag-green">publicado</span>
+                <% } else if (p.status === 'scheduled') { %><span class="tag tag-blue">agendado</span>
+                <% } else { %><span class="tag tag-amber">rascunho</span><% } %>
+              </td>
+              <td><%= p.views %></td>
+              <td style="text-align:right">
+                <% if (p.status === 'published') { %>
+                  <a class="btn btn-ghost btn-sm" href="/blog/<%= p.slug %>" target="_blank">ver</a>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <div class="empty-state">
+          <div class="big">📝</div>
+          <p>Nenhum post ainda. <a href="/admin/posts/novo">Comece o primeiro</a>.</p>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- comentários pendentes -->
+    <% if (pendingComments.length) { %>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Aguardando sua revisão</h2>
+        <div class="spacer"></div>
+        <a class="btn btn-ghost btn-sm" href="/admin/comentarios">Ver todos</a>
+      </div>
+      <% pendingComments.forEach(c => { %>
+        <div class="comment-card">
+          <div class="who">
+            <strong><%= c.author_name %></strong>
+            <span class="muted">em</span>
+            <a href="/blog/<%= c.post_slug %>#c<%= c.id %>" target="_blank"><%= c.post_title %></a>
+            <% if (c.spam_score >= 30) { %>
+              <span class="tag tag-amber" title="<%= c.spam_reason %>">suspeita <%= c.spam_score %>%</span>
+            <% } %>
+          </div>
+          <blockquote><%- c.html %></blockquote>
+          <div class="btn-row">
+            <form method="post" action="/admin/comentarios/<%= c.id %>/aprovar">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button class="btn btn-primary btn-sm">Aprovar</button>
+            </form>
+            <form method="post" action="/admin/comentarios/<%= c.id %>/spam">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button class="btn btn-ghost btn-sm">Marcar como spam</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- coluna lateral -->
+  <div class="side-panel">
+    <div class="panel">
+      <h3>Sugestões de pauta</h3>
+      <p class="muted small">Geradas a partir do que você já publicou.</p>
+      <% ideas.forEach(i => { %>
+        <div class="idea">
+          <span>💡</span>
+          <div>
+            <div class="k"><%= i.kind %></div>
+            <%= i.text %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <% if (topPosts.length) { %>
+    <div class="panel">
+      <h3>Mais lidos</h3>
+      <% topPosts.forEach((p, i) => { %>
+        <div class="idea">
+          <strong class="muted"><%= i + 1 %>.</strong>
+          <div>
+            <a href="/blog/<%= p.slug %>" target="_blank" style="text-decoration:none"><%= p.title %></a>
+            <div class="muted small"><%= p.views %> leituras</div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <div class="panel">
+      <h3>Resumo</h3>
+      <table class="list">
+        <tbody>
+          <tr><td>Agendados</td><td style="text-align:right"><%= counts.scheduled %></td></tr>
+          <tr><td>Spam retido</td><td style="text-align:right"><%= counts.spam %></td></tr>
+          <tr><td>Mensagens novas</td><td style="text-align:right"><%= counts.messages %></td></tr>
+          <tr><td>Inscritos na newsletter</td><td style="text-align:right"><%= counts.subscribers %></td></tr>
+        </tbody>
+      </table>
+      <div class="btn-row" style="margin-top:1rem">
+        <a class="btn btn-ghost btn-sm" href="/admin/backup.json">⬇ Baixar backup</a>
+      </div>
+    </div>
+
+    <div class="<%= aiEnabled ? 'ai-box' : 'panel ai-off' %>">
+      <h3><%= aiEnabled ? '✨ Assistente ativo' : '💤 Assistente desligado' %></h3>
+      <p class="small" style="margin:0">
+        <% if (aiEnabled) { %>
+          O assistente de escrita está disponível no editor: gerar resumo, revisar o texto,
+          sugerir títulos e rascunhar posts a partir de um link.
+        <% } else { %>
+          As análises automáticas (resumo, tags, SEO, detecção de spam) já funcionam.
+          Para ativar também a revisão de texto por IA, defina a variável
+          <code>ANTHROPIC_API_KEY</code> e reinicie o site.
+        <% } %>
+      </p>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

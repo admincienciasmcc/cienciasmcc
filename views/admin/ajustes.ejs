@@ -1,0 +1,186 @@
+<%- include('partials/head') %>
+<%- include('partials/nav') %>
+
+<div class="topbar">
+  <h1>Ajustes</h1>
+</div>
+
+<div class="cols cols-main">
+  <div>
+    <form method="post" action="/admin/ajustes">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+      <div class="panel">
+        <h2>Identidade do site</h2>
+        <div class="cols cols-2">
+          <div class="field">
+            <label for="site_title">Nome do projeto</label>
+            <input id="site_title" type="text" name="site_title" value="<%= values.site_title %>">
+            <p class="hint">Aparece no cabeçalho, na aba do navegador, no RSS e no rodapé.</p>
+          </div>
+          <div class="field">
+            <label for="site_tagline">Linha abaixo do nome</label>
+            <input id="site_tagline" type="text" name="site_tagline" value="<%= values.site_tagline %>">
+            <p class="hint">Texto pequeno sob o nome, no cabeçalho.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="site_description">Descrição para buscadores</label>
+          <textarea id="site_description" name="site_description" rows="2"><%= values.site_description %></textarea>
+        </div>
+        <div class="cols cols-2">
+          <div class="field">
+            <label for="owner_name">Autoria (direitos no rodapé)</label>
+            <input id="owner_name" type="text" name="owner_name" value="<%= values.owner_name %>">
+          </div>
+          <div class="field">
+            <label for="owner_short">Forma curta da autoria</label>
+            <input id="owner_short" type="text" name="owner_short" value="<%= values.owner_short %>">
+          </div>
+        </div>
+        <div class="field">
+          <label for="owner_role">Cargo / titulação</label>
+          <input id="owner_role" type="text" name="owner_role" value="<%= values.owner_role %>">
+        </div>
+        <div class="cols cols-2">
+          <div class="field">
+            <label for="portrait_image">Foto de retrato (endereço da imagem)</label>
+            <input id="portrait_image" type="text" name="portrait_image" value="<%= values.portrait_image %>"
+                   placeholder="/uploads/…">
+            <div class="hint">Envie em <a href="/admin/midia">Imagens</a> e cole o endereço aqui.</div>
+          </div>
+          <div class="field">
+            <label for="contact_email">E-mail de contato exibido</label>
+            <input id="contact_email" type="email" name="contact_email" value="<%= values.contact_email %>">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Links e perfis</h2>
+        <div class="cols cols-2">
+          <div class="field">
+            <label for="lattes_url">Currículo Lattes</label>
+            <input id="lattes_url" type="url" name="lattes_url" value="<%= values.lattes_url %>">
+          </div>
+          <div class="field">
+            <label for="orcid_url">ORCID</label>
+            <input id="orcid_url" type="url" name="orcid_url" value="<%= values.orcid_url %>">
+          </div>
+          <div class="field">
+            <label for="scientia_url">Revista Scientia Amazonia</label>
+            <input id="scientia_url" type="url" name="scientia_url" value="<%= values.scientia_url %>">
+          </div>
+          <div class="field">
+            <label for="instagram_url">Instagram</label>
+            <input id="instagram_url" type="url" name="instagram_url" value="<%= values.instagram_url %>">
+          </div>
+          <div class="field">
+            <label for="linkedin_url">LinkedIn</label>
+            <input id="linkedin_url" type="url" name="linkedin_url" value="<%= values.linkedin_url %>">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Blog e comentários</h2>
+        <div class="cols cols-2">
+          <div class="field">
+            <label for="comment_policy">Política de comentários</label>
+            <select id="comment_policy" name="comment_policy">
+              <option value="moderate" <%= values.comment_policy === 'moderate' ? 'selected' : '' %>>
+                Revisar antes de publicar (recomendado)
+              </option>
+              <option value="auto" <%= values.comment_policy === 'auto' ? 'selected' : '' %>>
+                Publicar automaticamente (spam ainda é retido)
+              </option>
+              <option value="closed" <%= values.comment_policy === 'closed' ? 'selected' : '' %>>
+                Fechar comentários em todo o site
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="posts_per_page">Posts por página</label>
+            <input id="posts_per_page" type="number" name="posts_per_page" min="3" max="24"
+                   value="<%= values.posts_per_page %>">
+          </div>
+        </div>
+        <button class="btn btn-primary" type="submit">Salvar ajustes</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="side-panel">
+    <div class="panel">
+      <h3>Sua conta</h3>
+      <form method="post" action="/admin/ajustes/perfil">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <div class="field">
+          <label for="name">Nome exibido</label>
+          <input id="name" type="text" name="name" value="<%= conta.name %>">
+        </div>
+        <div class="field">
+          <label for="acc-email">E-mail de acesso</label>
+          <input id="acc-email" type="email" name="email" value="<%= conta.email %>">
+        </div>
+        <div class="field">
+          <label for="bio">Mini-biografia (aparece no fim dos posts)</label>
+          <textarea id="bio" name="bio" rows="3"><%= conta.bio %></textarea>
+        </div>
+        <div class="field">
+          <label for="avatar">Foto do perfil (endereço)</label>
+          <input id="avatar" type="text" name="avatar" value="<%= conta.avatar %>" placeholder="/uploads/…">
+        </div>
+        <button class="btn btn-ghost" type="submit">Salvar perfil</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h3>Trocar senha</h3>
+      <form method="post" action="/admin/ajustes/senha">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <div class="field">
+          <label for="atual">Senha atual</label>
+          <input id="atual" type="password" name="atual" required autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="nova">Nova senha</label>
+          <input id="nova" type="password" name="nova" required autocomplete="new-password">
+          <div class="hint">Mínimo de 8 caracteres, com letras e números.</div>
+        </div>
+        <div class="field">
+          <label for="confirma">Repita a nova senha</label>
+          <input id="confirma" type="password" name="confirma" required autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary" type="submit">Trocar senha</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h3>Backup</h3>
+      <p class="muted small">
+        Baixe uma cópia de tudo (posts, comentários, currículo, ajustes) em um arquivo JSON.
+        Guarde periodicamente.
+      </p>
+      <a class="btn btn-ghost" href="/admin/backup.json">⬇ Baixar backup completo</a>
+    </div>
+
+    <div class="<%= aiEnabled ? 'ai-box' : 'panel ai-off' %>">
+      <h3>Assistente de IA</h3>
+      <% if (aiEnabled) { %>
+        <p class="small" style="margin:0">
+          Ativo, usando o modelo <code><%= aiModel %></code>. As chamadas só acontecem quando
+          você clica em um botão do assistente — nada é enviado automaticamente.
+        </p>
+      <% } else { %>
+        <p class="small" style="margin:0">
+          Desligado. Para ativar, defina a variável de ambiente
+          <code>ANTHROPIC_API_KEY</code> antes de iniciar o site. As análises de texto,
+          SEO e spam continuam funcionando sem ele.
+        </p>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

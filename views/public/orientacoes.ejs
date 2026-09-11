@@ -1,0 +1,67 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Formação de pesquisadores</p>
+    <h1>Orientações e supervisões</h1>
+    <p class="hero-lead">
+      Boa parte do que produzimos está na trajetória destas pessoas. São teses de doutorado,
+      dissertações de mestrado, trabalhos de conclusão de curso, iniciações científicas,
+      monitorias e projetos de extensão orientados ao longo de três décadas.
+    </p>
+
+    <%- include('../partials/filtro-pessoa', { base: '/orientacoes', filtro, extra: filtroTipo ? 'tipo=' + filtroTipo : '' }) %>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="filters">
+      <a class="chip <%= !filtroTipo ? '' : 'chip-plain' %>"
+         href="/orientacoes<%= filtro.slug ? '?quem=' + filtro.slug : '' %>">Todas (<%= total %>)</a>
+      <% contagens.forEach(c => { %>
+        <a class="chip <%= filtroTipo === c.kind ? '' : 'chip-plain' %>"
+           href="/orientacoes?tipo=<%= c.kind %><%= filtro.slug ? '&quem=' + filtro.slug : '' %>">
+          <%= rotulos[c.kind] || c.kind %> (<%= c.n %>)
+        </a>
+      <% }) %>
+    </div>
+
+    <% grupos.forEach(grupo => { %>
+      <h2 style="margin-top:3rem;padding-bottom:.5rem;border-bottom:2px solid var(--line)">
+        <%= grupo.label %> <span class="muted" style="font-size:1rem;font-weight:400">(<%= grupo.items.length %>)</span>
+      </h2>
+
+      <ul class="pub-list">
+        <% grupo.items.forEach(o => { %>
+          <li class="pub-item">
+            <div class="pub-year"><%= o.year || '—' %></div>
+            <div>
+              <div class="pub-title"><strong><%= o.student %></strong></div>
+              <% if (o.title) { %><div class="venue" style="font-style:normal;color:var(--ink-2)"><%= o.title %></div><% } %>
+              <div class="small muted" style="margin-top:.3rem">
+                <%= o.role %>
+                <% if (o.institution) { %> · <%= o.institution %><% } %>
+                <% if (o.funding) { %> · <span class="cites" style="font-style:normal"><%= o.funding %></span><% } %>
+                <% if (o.status && o.status !== 'concluída') { %> · <em><%= o.status %></em><% } %>
+              </div>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    <% }) %>
+
+    <% if (!grupos.length) { %>
+      <div class="empty"><div class="big">🎓</div><h3>Nenhuma orientação cadastrada ainda.</h3></div>
+    <% } %>
+
+    <p class="small muted" style="margin-top:3rem">
+      Além destas, há dezenas de participações em bancas de mestrado, doutorado, qualificação,
+      concurso público e comissões julgadoras — as listas completas estão nos currículos Lattes
+      de cada uma, em <a href="/sobre">Quem somos</a>.
+    </p>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

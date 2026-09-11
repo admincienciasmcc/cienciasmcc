@@ -1,0 +1,168 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Quem somos</p>
+    <h1 style="max-width:20ch">Duas biólogas, dois caminhos, um projeto</h1>
+    <p class="hero-lead" style="max-width:66ch">
+      <strong><%= settings.site_title %></strong> nasceu do encontro de dois percursos. Nós
+      nos formamos em Ciências Biológicas pela Universidade de Santo Amaro, na mesma época,
+      e de lá seguimos por estradas diferentes — uma para o laboratório e para os rios da
+      Amazônia, outra para a sala de aula e para os livros didáticos.
+    </p>
+  </div>
+</section>
+
+<section class="section overlap">
+  <div class="wrap duo-grid">
+    <% pessoas.forEach(p => { %>
+      <article class="duo-card" style="--accent: <%= p.accent %>">
+        <a class="duo-portrait" href="/sobre/<%= p.slug %>">
+          <% if (p.portrait) { %>
+            <img src="<%= p.portrait %>" alt="Retrato de <%= p.short_name %>">
+          <% } else { %>
+            <span class="portrait-fallback"><%= p.initials %></span>
+          <% } %>
+        </a>
+
+        <div class="duo-body">
+          <h2><a href="/sobre/<%= p.slug %>"><%= p.short_name %></a></h2>
+          <p class="duo-role"><%= p.role %></p>
+          <p class="duo-bio"><%= p.bio.length > 300 ? p.bio.slice(0, 300).replace(/\s\S*$/, '') + '…' : p.bio %></p>
+
+          <% if (p.linhas.length) { %>
+            <div class="filters" style="margin:1rem 0">
+              <% p.linhas.forEach(l => { %>
+                <span class="chip chip-plain"><%= l.icon %> <%= l.title.length > 34 ? l.title.slice(0, 34).replace(/\s\S*$/, '') + '…' : l.title %></span>
+              <% }) %>
+            </div>
+          <% } %>
+
+          <div class="duo-stats">
+            <% if (p.destaques.publicacoes) { %>
+              <span><b><%= p.destaques.publicacoes %></b> publicações</span>
+            <% } %>
+            <% if (p.destaques.orientacoes) { %>
+              <span><b><%= p.destaques.orientacoes %></b> orientações</span>
+            <% } %>
+            <% if (p.destaques.anos) { %>
+              <span>desde <b><%= p.destaques.anos %></b></span>
+            <% } %>
+          </div>
+
+          <div class="hero-actions" style="margin-top:1.25rem">
+            <a class="btn btn-primary" href="/sobre/<%= p.slug %>">Ver trajetória completa</a>
+            <a class="btn btn-ghost" href="/blog?quem=<%= p.slug %>">Textos dela</a>
+          </div>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">O nome</p>
+        <h2>Três palavras, três maneiras de escrever</h2>
+        <p class="muted" style="max-width:62ch">
+          O título do projeto não é enfeite: é a separação que tentamos fazer em cada texto.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="line-card">
+        <div class="icon">🚫</div>
+        <h3>Mitos</h3>
+        <p class="small muted" style="margin:0">
+          Coisas que todo mundo repete e que a evidência não sustenta — de sugar o veneno da
+          picada a “estresse baixa a imunidade”. Aqui a gente mostra de onde veio a ideia e
+          o que os estudos realmente dizem.
+        </p>
+      </div>
+      <div class="line-card">
+        <div class="icon">💡</div>
+        <h3>Curiosidades</h3>
+        <p class="small muted" style="margin:0">
+          O que é verdade e é surpreendente: por que a arraia dói tanto, o que a floresta tem
+          a ver com o soro antiofídico, como se descobriu aquilo que hoje está no livro
+          didático.
+        </p>
+      </div>
+      <div class="line-card">
+        <div class="icon">📐</div>
+        <h3>Conceitos</h3>
+        <p class="small muted" style="margin:0">
+          As ideias que sustentam o resto — imunidade, veneno, antígeno, inflamação —
+          explicadas com calma, do jeito que gostaríamos de ter lido quando começamos.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--paper-2);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="grid grid-2" style="gap:3rem;align-items:center">
+      <div>
+        <p class="eyebrow">Por que juntas</p>
+        <h2>Pesquisa e ensino são o mesmo trabalho, em tempos diferentes</h2>
+        <p class="muted">
+          Uma descoberta que não chega à escola morre no artigo. Uma aula sem pesquisa por
+          trás vira repetição. A ciência precisa das duas pontas — de quem produz o
+          conhecimento e de quem sabe traduzi-lo para a próxima geração.
+        </p>
+        <p class="muted">
+          É essa a divisão de trabalho aqui: a pesquisa em Imunologia, venenos e antivenenos
+          na Amazônia de um lado; o ensino de Ciências, os livros didáticos e a História da
+          Ciência de outro. Os textos do blog nascem desse encontro.
+        </p>
+        <a class="btn btn-primary" href="/blog">Ler o blog</a>
+      </div>
+
+      <div class="grid" style="gap:1rem">
+        <div class="line-card">
+          <div class="icon">🔬</div>
+          <h3>A ponta da pesquisa</h3>
+          <p class="small muted" style="margin:0">
+            Trinta anos de laboratório e campo: venenos de serpentes e arraias, antivenenos,
+            plantas medicinais amazônicas e psiconeuroimunologia.
+          </p>
+        </div>
+        <div class="line-card">
+          <div class="icon">📖</div>
+          <h3>A ponta da escola</h3>
+          <p class="small muted" style="margin:0">
+            Quase três décadas em sala de aula, coleções didáticas de Ciências publicadas e
+            pesquisa em História da Ciência aplicada ao ensino.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="callout">
+      <p class="eyebrow" style="justify-content:center">Currículos completos</p>
+      <h2 style="margin-bottom:.5rem">Tudo aqui vem da Plataforma Lattes</h2>
+      <p class="muted" style="max-width:62ch;margin:0 auto 1.5rem">
+        Publicações, projetos, orientações, disciplinas e trajetória foram transcritos dos
+        currículos Lattes das duas.
+      </p>
+      <% pessoas.forEach(p => { %>
+        <% if (p.lattes_url) { %>
+          <a class="btn btn-ghost" href="<%= p.lattes_url %>" target="_blank" rel="noopener">
+            Lattes de <%= p.short_name.split(' ')[0] %> ↗
+          </a>
+        <% } %>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

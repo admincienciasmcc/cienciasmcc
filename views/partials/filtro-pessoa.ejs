@@ -1,0 +1,15 @@
+<%# chips para filtrar por autora — uso: include('../partials/filtro-pessoa', { base, filtro, extra }) %>
+<% const _extra = typeof extra !== 'undefined' && extra ? extra : ''; %>
+<div class="filters filtro-pessoa">
+  <span class="filtro-label">De quem:</span>
+  <a class="chip <%= !filtro.slug ? '' : 'chip-plain' %>" href="<%= base %><%= _extra ? '?' + _extra : '' %>">
+    As duas
+  </a>
+  <% pessoas.forEach(p => { %>
+    <a class="chip <%= filtro.slug === p.slug ? '' : 'chip-plain' %>"
+       style="<%= filtro.slug === p.slug ? '--accent:' + p.accent : '' %>"
+       href="<%= base %>?quem=<%= p.slug %><%= _extra ? '&' + _extra : '' %>">
+      <%- include('pessoa-avatar', { p, tamanho: 20 }) %> <%= p.short_name.split(' ')[0] %>
+    </a>
+  <% }) %>
+</div>

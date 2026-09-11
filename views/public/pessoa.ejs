@@ -1,0 +1,307 @@
+<%- include('../partials/head', { metaDescription: pessoa.bio.slice(0, 155), ogImage: pessoa.portrait || null }) %>
+<%- include('../partials/header') %>
+
+<section class="page-head is-profile" style="--accent: <%= pessoa.accent %>">
+  <div class="wrap">
+    <p class="small" style="margin-bottom:1.5rem;opacity:.8"><a href="/sobre">← Quem somos</a></p>
+  </div>
+
+  <div class="wrap hero-grid" style="align-items:center">
+    <div>
+      <p class="eyebrow"><%= pessoa.tagline %></p>
+      <h1><%= pessoa.name %></h1>
+      <p class="duo-role" style="font-size:1rem"><%= pessoa.role %></p>
+      <p class="hero-lead" style="max-width:60ch;margin-top:1.25rem"><%= pessoa.bio %></p>
+
+      <div class="hero-actions">
+        <% if (pessoa.lattes_url) { %>
+          <a class="btn btn-ghost" href="<%= pessoa.lattes_url %>" target="_blank" rel="noopener">Currículo Lattes ↗</a>
+        <% } %>
+        <% if (pessoa.orcid_url) { %>
+          <a class="btn btn-ghost" href="<%= pessoa.orcid_url %>" target="_blank" rel="noopener">ORCID ↗</a>
+        <% } %>
+        <% if (contagens.posts) { %>
+          <a class="btn btn-primary" href="/blog?quem=<%= pessoa.slug %>">Textos no blog (<%= contagens.posts %>)</a>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="portrait <%= pessoa.portrait ? 'has-photo' : '' %>">
+      <% if (pessoa.portrait) { %>
+        <img src="<%= pessoa.portrait %>" alt="Retrato de <%= pessoa.short_name %>">
+      <% } else { %><span class="portrait-fallback"><%= pessoa.initials %></span><% } %>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================== identificação -->
+<section class="section overlap" style="--accent: <%= pessoa.accent %>">
+  <div class="wrap">
+    <div class="id-card">
+      <div>
+        <h4 class="eyebrow">Identificação</h4>
+        <dl class="id-list">
+          <dt>Nome</dt><dd><%= pessoa.name %></dd>
+          <dt>Nacionalidade</dt><dd><%= pessoa.nationality || 'Brasil' %></dd>
+          <% if (pessoa.lattes_id) { %>
+            <dt>ID Lattes</dt>
+            <dd><a href="<%= pessoa.lattes_url %>" target="_blank" rel="noopener"><%= pessoa.lattes_id %></a></dd>
+          <% } %>
+          <% if (pessoa.orcid_url) { %>
+            <dt>ORCID</dt>
+            <dd><a href="<%= pessoa.orcid_url %>" target="_blank" rel="noopener"><%= pessoa.orcid_url.replace('https://orcid.org/', '') %></a></dd>
+          <% } %>
+          <% if (pessoa.lattes_updated) { %>
+            <dt>Currículo atualizado em</dt><dd><%= pessoa.lattes_updated %></dd>
+          <% } %>
+        </dl>
+      </div>
+
+      <% if (pessoa.citation_names) { %>
+        <div>
+          <h4 class="eyebrow">Nome em citações bibliográficas</h4>
+          <p class="small muted" style="line-height:1.9"><%= pessoa.citation_names %></p>
+        </div>
+      <% } %>
+    </div>
+
+    <%# só mostra o que existe — zeros não dizem nada a quem lê %>
+    <% const numeros = [
+         [contagens.publicacoes, 'publicações'],
+         [contagens.projetos, 'projetos'],
+         [contagens.orientacoes, 'orientações'],
+         [contagens.disciplinas, 'disciplinas'],
+         [linhas.length, 'linhas de trabalho'],
+       ].filter(n => n[0]); %>
+    <% if (numeros.length) { %>
+      <div class="stat-strip" style="margin-top:2rem">
+        <% numeros.forEach(n => { %>
+          <div class="stat"><b><%= n[0] %></b><span><%= n[1] %></span></div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<!-- ================================================= linhas de trabalho -->
+<% if (linhas.length) { %>
+<section class="section" style="background:var(--paper-2);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <p class="eyebrow">No que trabalha</p>
+    <h2 style="margin-bottom:2rem">Linhas de pesquisa e atuação</h2>
+    <div class="grid grid-2">
+      <% linhas.forEach(l => { %>
+        <div class="line-card">
+          <div class="icon"><%= l.icon || '🔬' %></div>
+          <h3><%= l.title %></h3>
+          <div class="line-summary"><%- l.summaryHtml %></div>
+          <% if (l.keywords) { %><div class="keys"><strong>Palavras-chave:</strong> <%= l.keywords %></div><% } %>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<!-- ========================================== formação e trajetória --- -->
+<section class="section">
+  <div class="wrap grid grid-2" style="gap:4rem;align-items:start">
+    <div>
+      <p class="eyebrow">Formação acadêmica e titulação</p>
+      <h2 style="margin-bottom:2rem">Onde estudou</h2>
+      <div class="timeline">
+        <% formacao.forEach(item => { %>
+          <div class="timeline-item">
+            <div class="period"><%= item.period %></div>
+            <h3><%= item.title %></h3>
+            <div class="org"><%= item.org %></div>
+            <% if (item.description) { %><p><%= item.description %></p><% } %>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+
+    <div>
+      <p class="eyebrow">Atuação profissional</p>
+      <h2 style="margin-bottom:2rem">Onde trabalhou</h2>
+      <div class="timeline">
+        <% carreira.forEach(item => { %>
+          <div class="timeline-item">
+            <div class="period"><%= item.period %></div>
+            <h3><%= item.title %></h3>
+            <div class="org"><%= item.org %></div>
+            <% if (item.description) { %><p><%= item.description %></p><% } %>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================== gestão e comissões -->
+<% if (gestao.length) { %>
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <p class="eyebrow">Direção, coordenação, conselhos e comissões</p>
+    <h2 style="margin-bottom:1.5rem">Gestão</h2>
+    <div class="grid grid-2">
+      <% gestao.forEach(g => { %>
+        <div class="project-card">
+          <div class="period"><%= g.period %></div>
+          <h3 style="font-size:1rem"><%= g.title %></h3>
+          <p class="small muted" style="margin:.25rem 0 0"><%= g.org %></p>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<!-- ==================================================== docência ------ -->
+<% if (teaching.length) { %>
+<section class="section" style="background:var(--paper-2);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <p class="eyebrow">Ensino</p>
+    <h2 style="margin-bottom:2rem">Disciplinas ministradas</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Período</th><th>Curso</th><th>Nível</th><th>Disciplinas</th></tr></thead>
+        <tbody>
+          <% teaching.forEach(t => { %>
+            <tr>
+              <td class="nowrap"><%= t.period %></td>
+              <td><strong><%= t.course %></strong></td>
+              <td class="muted"><%= t.level %></td>
+              <td><%= t.subjects %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<!-- =========================================== eventos e congressos --- -->
+<% if (eventos.length) { %>
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow">Participação e organização</p>
+    <h2 style="margin-bottom:2rem">Eventos, congressos e seminários</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Ano</th><th>Trabalho ou evento</th><th>Onde</th><th>Tipo</th></tr></thead>
+        <tbody>
+          <% eventos.forEach(e => { %>
+            <tr>
+              <td class="nowrap"><%= e.period %></td>
+              <td><strong><%= e.title %></strong></td>
+              <td class="muted"><%= e.description || '—' %></td>
+              <td class="muted"><%= e.status %><% if (e.role) { %> · <%= e.role %><% } %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<!-- ============================================ prêmios, idiomas ------ -->
+<section class="section" style="padding-top:<%= eventos.length ? '0' : '' %>">
+  <div class="wrap grid grid-2" style="gap:4rem;align-items:start">
+    <div>
+      <% if (awards.length) { %>
+        <p class="eyebrow">Prêmios e títulos</p>
+        <h2 style="margin-bottom:1.5rem">Reconhecimentos</h2>
+        <% awards.forEach(a => { %>
+          <div class="project-card" style="margin-bottom:1rem">
+            <div class="period"><%= a.year %></div>
+            <h3 style="font-size:1rem"><%= a.title %></h3>
+            <p class="small muted" style="margin:.25rem 0 0"><%= a.org %></p>
+          </div>
+        <% }) %>
+      <% } %>
+
+      <% if (pessoa.areas.length) { %>
+        <p class="eyebrow" style="margin-top:<%= awards.length ? '3rem' : '0' %>">Áreas de atuação</p>
+        <h2 style="margin-bottom:1rem">Onde se situa na ciência</h2>
+        <ol class="area-list">
+          <% pessoa.areas.forEach(a => { %><li><%= a %></li><% }) %>
+        </ol>
+      <% } %>
+    </div>
+
+    <div>
+      <% if (editoria && pessoa.slug === 'maria-cristina-dos-santos') { %>
+        <p class="eyebrow">Atividade editorial</p>
+        <h2 style="margin-bottom:1.5rem">Periódicos e agências</h2>
+        <% if (editoria.corpoEditorial && editoria.corpoEditorial.length) { %>
+          <div class="line-card" style="margin-bottom:1rem">
+            <div class="icon">📚</div>
+            <h3>Membro de corpo editorial</h3>
+            <% editoria.corpoEditorial.forEach(e => { %>
+              <p class="small" style="margin:.25rem 0"><strong><%= e.name %></strong> · <span class="muted"><%= e.period %></span></p>
+            <% }) %>
+          </div>
+        <% } %>
+        <% if (editoria.revisorPeriodico && editoria.revisorPeriodico.length) { %>
+          <div class="line-card" style="margin-bottom:1rem">
+            <div class="icon">🔍</div>
+            <h3>Revisora de periódico</h3>
+            <% editoria.revisorPeriodico.forEach(e => { %>
+              <p class="small" style="margin:.25rem 0"><%= e.name %> · <span class="muted"><%= e.period %></span></p>
+            <% }) %>
+          </div>
+        <% } %>
+        <% if (editoria.revisorFomento && editoria.revisorFomento.length) { %>
+          <div class="line-card" style="margin-bottom:1rem">
+            <div class="icon">🏛️</div>
+            <h3>Revisora de projeto de fomento</h3>
+            <% editoria.revisorFomento.forEach(e => { %>
+              <p class="small" style="margin:.25rem 0"><%= e.name %> · <span class="muted"><%= e.period %></span></p>
+            <% }) %>
+          </div>
+        <% } %>
+      <% } %>
+
+      <% if (pessoa.languages.length) { %>
+        <p class="eyebrow" style="margin-top:<%= (editoria && pessoa.slug === 'maria-cristina-dos-santos') ? '2rem' : '0' %>">Idiomas</p>
+        <div class="line-card">
+          <div class="icon">🗣️</div>
+          <h3>Línguas</h3>
+          <% pessoa.languages.forEach(i => { %>
+            <p class="small" style="margin:.3rem 0"><strong><%= i.lang %></strong><br><span class="muted"><%= i.detail %></span></p>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================= a outra autora --- -->
+<% if (outras.length) { %>
+<section class="section" style="background:var(--paper-2);border-top:1px solid var(--line)">
+  <div class="wrap">
+    <div class="section-head"><div><p class="eyebrow">A outra metade do projeto</p><h2>Conheça também</h2></div></div>
+    <div class="duo-grid">
+      <% outras.forEach(o => { %>
+        <article class="duo-card" style="--accent: <%= o.accent %>">
+          <a class="duo-portrait" href="/sobre/<%= o.slug %>">
+            <% if (o.portrait) { %><img src="<%= o.portrait %>" alt="Retrato de <%= o.short_name %>">
+            <% } else { %><span class="portrait-fallback"><%= o.initials %></span><% } %>
+          </a>
+          <div class="duo-body">
+            <h2><a href="/sobre/<%= o.slug %>"><%= o.short_name %></a></h2>
+            <p class="duo-role"><%= o.role %></p>
+            <p class="duo-bio"><%= o.bio.slice(0, 220).replace(/\s\S*$/, '') %>…</p>
+            <a class="btn btn-primary" href="/sobre/<%= o.slug %>">Ver trajetória</a>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<%- include('../partials/footer') %>

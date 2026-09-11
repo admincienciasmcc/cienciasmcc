@@ -1,0 +1,212 @@
+<%- include('../partials/head', {
+  metaDescription: post.seo_description || post.excerpt,
+  ogType: 'article',
+  ogImage: post.cover || null,
+}) %>
+<%- include('../partials/header') %>
+
+<article>
+  <header class="post-header">
+    <div class="wrap-narrow">
+      <p class="small muted" style="margin-bottom:1rem">
+        <a href="/blog">← Todos os textos</a>
+      </p>
+      <% if (post.category_name) { %>
+        <a class="chip" href="/blog?categoria=<%= post.category_slug %>"
+           style="--accent: <%= post.category_color %>"><%= post.category_name %></a>
+      <% } %>
+      <h1 style="margin-top:.9rem"><%= post.title %></h1>
+      <% if (post.subtitle) { %><p class="post-sub"><%= post.subtitle %></p><% } %>
+      <div class="post-meta">
+        <% if (post.pessoa) { %>
+          <a class="post-author-link" href="/sobre/<%= post.pessoa.slug %>">
+            <%- include('../partials/pessoa-avatar', { p: post.pessoa, tamanho: 24 }) %>
+            <%= post.pessoa.short_name %>
+          </a>
+        <% } %>
+        <span>&middot;</span>
+        <time datetime="<%= post.published_at %>"><%= post.dateLabel %></time>
+        <span>&middot;</span>
+        <span><%= post.reading_time %> min de leitura</span>
+        <% if (post.views > 20) { %><span>&middot;</span><span><%= post.views %> leituras</span><% } %>
+      </div>
+    </div>
+  </header>
+
+  <% if (post.cover) { %>
+    <div class="wrap">
+      <figure class="post-cover">
+        <img src="<%= post.cover %>" alt="">
+        <% if (post.cover_credit) { %><figcaption><%= post.cover_credit %></figcaption><% } %>
+      </figure>
+    </div>
+  <% } %>
+
+  <div class="wrap post-layout">
+    <div class="prose">
+      <%- post.body_html %>
+
+      <% if (post.gallery && post.gallery.length) { %>
+        <section class="post-gallery">
+          <h2>Imagens deste texto</h2>
+          <div class="gallery-grid <%= post.gallery.length === 1 ? 'is-single' : '' %>">
+            <% post.gallery.forEach(img => { %>
+              <figure>
+                <a href="<%= img.url %>" target="_blank" rel="noopener"
+                   aria-label="Abrir imagem em tamanho maior">
+                  <img src="<%= img.url %>" alt="<%= img.caption %>" loading="lazy">
+                </a>
+                <figcaption>
+                  <%= img.caption %>
+                  <% if (img.credit) { %><span class="credit"><%= img.credit %></span><% } %>
+                </figcaption>
+              </figure>
+            <% }) %>
+          </div>
+        </section>
+      <% } %>
+
+      <% if (post.source_url || post.doi) { %>
+        <div class="source-box">
+          <strong>Fonte comentada neste texto</strong>
+          <% if (post.source_title) { %><div><%= post.source_title %></div><% } %>
+          <% if (post.source_url) { %>
+            <a href="<%= post.source_url %>" rel="nofollow noopener" target="_blank"><%= post.source_url %></a>
+          <% } %>
+          <% if (post.doi) { %>
+            <div><a href="https://doi.org/<%= post.doi.replace(/^https?:\/\/doi\.org\//, '') %>"
+                    rel="noopener" target="_blank">DOI: <%= post.doi %></a></div>
+          <% } %>
+        </div>
+      <% } %>
+
+      <% if (post.tags.length) { %>
+        <div class="filters" style="margin-top:2.5rem">
+          <% post.tags.forEach(t => { %>
+            <a class="chip chip-plain" href="/blog?tag=<%= t.slug %>"># <%= t.name %></a>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <div class="post-footer">
+        <div class="author-box" style="--accent: <%= post.pessoa ? post.pessoa.accent : 'var(--forest)' %>">
+          <% if (post.pessoa) { %>
+            <%- include('../partials/pessoa-avatar', { p: post.pessoa, tamanho: 64 }) %>
+            <div>
+              <h3 style="margin-bottom:.15rem">
+                <a href="/sobre/<%= post.pessoa.slug %>" style="color:inherit;text-decoration:none"><%= post.pessoa.name %></a>
+              </h3>
+              <p class="small" style="color:<%= post.pessoa.accent %>;margin:0 0 .4rem;font-weight:600"><%= post.pessoa.role %></p>
+              <p class="small muted" style="margin:0">
+                <%= post.pessoa.bio.slice(0, 210).replace(/\s\S*$/, '') %>…
+                <a href="/sobre/<%= post.pessoa.slug %>">Ler mais →</a>
+              </p>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- comentários -->
+      <section class="comments" id="comentarios">
+        <h2><%= commentCount %> <%= commentCount === 1 ? 'comentário' : 'comentários' %></h2>
+
+        <% if (!comments.length) { %>
+          <p class="muted">Nenhum comentário ainda. Se este texto te fez pensar em algo, escreva abaixo.</p>
+        <% } %>
+
+        <% comments.forEach(c => { %>
+          <div class="comment <%= c.by_owner ? 'is-owner' : '' %>" id="c<%= c.id %>">
+            <div class="comment-head">
+              <b><%= c.author_name %></b>
+              <% if (c.by_owner) { %><span class="badge-owner">autora</span><% } %>
+              <span class="muted small"><%= c.dateLabel %></span>
+            </div>
+            <div class="comment-body"><%- c.html %></div>
+            <% if (canComment) { %>
+              <button class="btn btn-ghost btn-sm" type="button" data-reply="<%= c.id %>" data-name="<%= c.author_name %>"
+                      style="margin-top:.6rem">Responder</button>
+            <% } %>
+
+            <% if (c.replies && c.replies.length) { %>
+              <div class="comment-replies">
+                <% c.replies.forEach(r => { %>
+                  <div class="comment <%= r.by_owner ? 'is-owner' : '' %>" id="c<%= r.id %>">
+                    <div class="comment-head">
+                      <b><%= r.author_name %></b>
+                      <% if (r.by_owner) { %><span class="badge-owner">autora</span><% } %>
+                      <span class="muted small"><%= r.dateLabel %></span>
+                    </div>
+                    <div class="comment-body"><%- r.html %></div>
+                  </div>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        <% }) %>
+
+        <% if (canComment) { %>
+          <div class="form-card" style="margin-top:2.5rem">
+            <h3 id="form-comentario">Deixe seu comentário</h3>
+            <p class="small muted">
+              <% if (settings.comment_policy === 'moderate') { %>
+                Os comentários passam por revisão antes de aparecer.
+              <% } %>
+              Não pedimos nem publicamos dados de saúde individuais — para casos concretos, procure atendimento médico.
+            </p>
+            <form method="post" action="/blog/<%= post.slug %>/comentar" data-comment-form>
+              <input type="hidden" name="parent_id" value="" data-parent-input>
+              <input type="hidden" name="ts" value="" data-ts-input>
+              <div class="honeypot" aria-hidden="true">
+                <label>Não preencha<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+              </div>
+              <p class="small" data-reply-note hidden>
+                Respondendo a <b data-reply-name></b>.
+                <button type="button" class="btn btn-ghost btn-sm" data-cancel-reply>cancelar</button>
+              </p>
+              <div class="form-row">
+                <div class="field">
+                  <label for="c-nome">Nome *</label>
+                  <input id="c-nome" type="text" name="nome" required maxlength="80">
+                </div>
+                <div class="field">
+                  <label for="c-email">E-mail (não é publicado)</label>
+                  <input id="c-email" type="email" name="email" maxlength="120">
+                </div>
+              </div>
+              <div class="field">
+                <label for="c-texto">Comentário *</label>
+                <textarea id="c-texto" name="comentario" required maxlength="4000"
+                          placeholder="Escreva aqui…"></textarea>
+              </div>
+              <button class="btn btn-primary" type="submit">Enviar comentário</button>
+            </form>
+          </div>
+        <% } else { %>
+          <p class="muted">Os comentários deste texto estão fechados.</p>
+        <% } %>
+      </section>
+    </div>
+
+    <% if (post.outline.length > 2) { %>
+      <aside class="post-toc">
+        <h4>Neste texto</h4>
+        <% post.outline.forEach(h => { %>
+          <a class="lvl-<%= h.level %>" href="#<%= h.id %>"><%= h.text %></a>
+        <% }) %>
+      </aside>
+    <% } %>
+  </div>
+</article>
+
+<% if (related.length) { %>
+<section class="section" style="background:var(--paper-2);border-top:1px solid var(--line);margin-top:4rem">
+  <div class="wrap">
+    <div class="section-head"><div><p class="eyebrow">Continue lendo</p><h2>Textos relacionados</h2></div></div>
+    <div class="grid grid-3">
+      <% related.forEach(post => { %><%- include('../partials/post-card', { post }) %><% }) %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<%- include('../partials/footer') %>

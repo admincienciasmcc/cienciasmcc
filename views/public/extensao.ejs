@@ -1,0 +1,72 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Extensão e divulgação</p>
+    <h1>A universidade fora dos muros</h1>
+    <p class="hero-lead">
+      Pesquisa que não volta para a comunidade que a tornou possível fica pela metade.
+      Estes são os projetos em que esse retorno foi o objetivo principal.
+    </p>
+
+    <%- include('../partials/filtro-pessoa', { base: '/extensao', filtro }) %>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="grid">
+      <% projects.forEach(p => { %>
+        <article class="project-card">
+          <div class="period">
+            <%= p.period %><% if (p.status) { %> &middot; <%= p.status %><% } %>
+          </div>
+          <h3><%= p.title %></h3>
+          <% if (p.description) { %><div class="project-desc"><%- p.descriptionHtml %></div><% } %>
+          <div class="tags">
+            <% if (p.role) { %><span class="chip chip-plain"><%= p.role %></span><% } %>
+            <% if (p.funder) { %><span class="chip chip-plain"><%= p.funder %></span><% } %>
+            <span class="chip chip-plain"><%= p.kind === 'extensao' ? 'Extensão' : 'Desenvolvimento' %></span>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+
+    <% if (!projects.length) { %>
+      <div class="empty"><div class="big">🌱</div><h3>Nenhum projeto cadastrado ainda.</h3></div>
+    <% } %>
+  </div>
+</section>
+
+<section class="section" style="background:var(--paper-2);border-top:1px solid var(--line)">
+  <div class="wrap grid grid-2" style="align-items:center;gap:3rem">
+    <div>
+      <p class="eyebrow">Editoria</p>
+      <h2>Revista Scientia Amazonia</h2>
+      <p class="muted">
+        Desde o lançamento da revista, em 2012, integro seu corpo editorial. É um
+        periódico eletrônico de acesso aberto criado para dar visibilidade à ciência
+        produzida na região — e para ensinar, na prática, como se escreve e se publica
+        um artigo científico.
+      </p>
+      <% if (settings.scientia_url) { %>
+        <a class="btn btn-ghost" href="<%= settings.scientia_url %>" target="_blank" rel="noopener">Visitar a revista</a>
+      <% } %>
+    </div>
+    <div>
+      <p class="eyebrow">Livros para o público</p>
+      <h2>Divulgação em papel</h2>
+      <p class="muted">
+        <strong>Serpentes de interesse médico da Amazônia</strong> (1996),
+        <strong>Lixo: curiosidades e conceitos</strong> (2002) e
+        <strong>Integração dos sistemas nervoso, endócrino, imune e da microbiota
+        intestinal</strong> (2021) nasceram da mesma vontade: colocar conhecimento
+        técnico numa linguagem que chegue a quem precisa dele.
+      </p>
+      <a class="btn btn-ghost" href="/publicacoes?tipo=livro">Ver os livros</a>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
