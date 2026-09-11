@@ -1,7 +1,7 @@
 {
-  "name": "site-maria-cristina",
+  "name": "cienciasmcc",
   "version": "1.0.0",
-  "description": "Site e blog científico da Profa. Dra. Maria Cristina dos Santos Sobreira de Sampaio",
+  "description": "Ciência: Mitos, Curiosidades e Conceitos — site e blog de Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki",
   "main": "server.js",
   "type": "commonjs",
   "private": true,
