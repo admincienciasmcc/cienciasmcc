@@ -10,22 +10,63 @@ blog pertence a uma das duas. Todas as listagens mostram as duas por padrão e
 aceitam `?quem=<slug>` para filtrar (`maria-cristina-dos-santos`,
 `sonia-bonduki`).
 
-## Como rodar
+## Como rodar na sua máquina
 
 ```bash
-npm install     # só na primeira vez
-npm run seed    # cria o banco, o conteúdo do currículo e o usuário administrador
-npm run fotos   # baixa as fotos de exemplo (opcional, precisa de internet)
-npm start       # sobe o site
+npm install      # só na primeira vez
+npm run instalar # cria o banco e carrega os dois currículos
+npm run fotos    # baixa as fotos de exemplo (opcional, precisa de internet)
+npm start        # sobe o site
 ```
 
 - **Site:** http://localhost:3000
 - **Painel:** http://localhost:3000/admin
 
+Sem nenhuma configuração, o projeto sobe um **PostgreSQL embutido**
+(PGlite, em WebAssembly) dentro de `data/pg/`. Não é preciso instalar banco
+nenhum. Uma ressalva: ele aceita **um processo por vez** — pare o servidor
+antes de rodar `npm run seed`, senão as gravações se perdem.
+
 A senha inicial é gerada na instalação e gravada em `data/PRIMEIRO-ACESSO.txt`.
 Troque-a no painel, em **Ajustes → Trocar senha**, e apague esse arquivo.
 
 Para desenvolver com recarga automática: `npm run dev`.
+Para conferir a instalação a qualquer momento: `npm run setup`.
+
+## Como publicar (Supabase + Vercel)
+
+O banco fica no Supabase, as imagens no Supabase Storage e o site no Vercel.
+
+**1. Supabase.** Crie um projeto em [supabase.com](https://supabase.com).
+Em *Project Settings → Database → Connection string*, copie a do
+**Transaction pooler** (porta 6543) — é a indicada para ambiente serverless;
+a conexão direta esgota o limite. Em *Project Settings → API*, copie a
+**Project URL** e a chave **service_role**.
+
+**2. Variáveis.** Copie `.env.example` para `.env` e preencha. Depois:
+
+```bash
+npm run setup     # confere a conexão e cria o bucket das imagens
+npm run instalar  # cria as tabelas e carrega o conteúdo
+```
+
+**3. Vercel.** Conecte o repositório do GitHub. Em *Settings → Environment
+Variables*, repita as mesmas variáveis do `.env` (`DATABASE_URL`,
+`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_BUCKET` e, se quiser,
+`SITE_URL`, `ANTHROPIC_API_KEY` e `CRON_SECRET`). O `vercel.json` já cuida
+do resto: manda todo o tráfego para `api/index.js` e agenda `/api/cron` a
+cada 15 minutos para publicar os posts programados.
+
+> A chave **service_role** ignora as regras de acesso do Supabase. Ela só
+> pode existir no servidor — nunca no navegador nem no repositório.
+
+### Por que não dá para usar só arquivos
+
+A primeira versão deste site guardava tudo num arquivo SQLite e gravava as
+imagens em `public/uploads/`. No Vercel isso não funciona: o disco é somente
+leitura e cada requisição pode cair numa instância diferente. Comentários,
+contador de leituras, sessões de login e envio de imagens quebrariam. Daí o
+Postgres (Supabase) e o Storage.
 
 ## O que o site tem
 
@@ -142,9 +183,16 @@ servidores de terceiros** quando alguém abre uma página.
 ## Como está organizado
 
 ```
-server.js              sobe o servidor e publica os posts agendados
+server.js              sobe o servidor na máquina local
+api/index.js           ponto de entrada no Vercel
+api/cron.js            publica os posts agendados (tarefa do Vercel)
+vercel.json            rotas e agenda da plataforma
 src/
-  db.js                banco SQLite, tabelas e migrações
+  app.js               monta o aplicativo Express (local e Vercel)
+  db.js                PostgreSQL: esquema, consultas e busca textual
+  storage.js           imagens: Supabase Storage ou disco local
+  rota.js              Router que captura erros de rotas assíncronas
+  setup.js             confere conexão, esquema e bucket
   auth.js              senhas (scrypt), sessões, CSRF, limite de tentativas
   intel.js             a "inteligência": resumo, tags, legibilidade, SEO, spam
   ai.js                assistente opcional sobre a API da Claude
@@ -160,7 +208,7 @@ views/                 templates EJS (public/, partials/ e admin/)
 public/css/            site.css (público) e admin.css (painel)
 public/fonts/          Lato em woff2, servida localmente
 public/uploads/        retratos e fotos enviadas
-data/site.db           todo o conteúdo
+data/pg/               Postgres embutido (só na máquina local)
 documentos/            PDFs e originais de onde o conteúdo foi transcrito
 ```
 

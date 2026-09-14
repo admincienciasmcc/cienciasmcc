@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const { q, db, setSetting, getSettings, reindexPost, DATA_DIR } = require('./db');
+const { q, init, encerrar, setSetting, getSettings, reindexPost, DATA_DIR } = require('./db');
 const { hashPassword } = require('./auth');
 const { slugify, summarize, readingStats } = require('./intel');
 const { renderMarkdown } = require('./markdown');
@@ -924,41 +924,29 @@ não é abandonar o campo — é medir melhor.`,
 
 /* ------------------------------------------------------------- execução  */
 
-function reset() {
+async function reset() {
+  // TRUNCATE com RESTART IDENTITY devolve os contadores de id ao início e
+  // CASCADE resolve as chaves estrangeiras numa tacada só.
   const tables = [
-    'post_tags',
-    'comments',
-    'post_views',
-    'posts',
-    'tags',
-    'categories',
-    'publications',
-    'research_lines',
-    'projects',
-    'timeline',
-    'awards',
-    'messages',
-    'subscribers',
-    'media',
-    'activity_log',
-    'sessions',
-    'users',
-    'settings',
+    'post_tags', 'post_images', 'comments', 'post_views', 'posts',
+    'tags', 'categories', 'publications', 'research_lines', 'projects',
+    'timeline', 'awards', 'teaching', 'mentorships', 'people',
+    'messages', 'subscribers', 'media', 'activity_log', 'sessions',
+    'users', 'settings',
   ];
-  for (const t of tables) db.exec(`DELETE FROM ${t}`);
-  db.exec('DELETE FROM posts_fts');
+  await q.run(`TRUNCATE ${tables.join(', ')} RESTART IDENTITY CASCADE`);
   console.log('· banco limpo');
 }
 
-function ensureAdmin() {
-  const existing = q.get('SELECT id FROM users LIMIT 1');
+async function ensureAdmin() {
+  const existing = await q.get('SELECT id FROM users LIMIT 1');
   if (existing) return existing.id;
 
   const email = process.env.ADMIN_EMAIL || 'maria@site.local';
   const password =
     process.env.ADMIN_PASSWORD || `mcs-${crypto.randomBytes(4).toString('hex')}-2026`;
 
-  const info = q.run(
+  const info = await q.run(
     'INSERT INTO users (name, email, password_hash, role, bio) VALUES (?, ?, ?, ?, ?)',
     'Maria Cristina dos Santos Sobreira de Sampaio',
     email,
@@ -982,33 +970,33 @@ Este arquivo pode ser apagado depois.
   return Number(info.lastInsertRowid);
 }
 
-function seedTable(table, rows, columns) {
-  const count = q.get(`SELECT COUNT(*) AS n FROM ${table}`).n;
+async function seedTable(table, rows, columns) {
+  const count = (await q.get(`SELECT COUNT(*) AS n FROM ${table}`)).n;
   if (count > 0) {
     console.log(`· ${table}: já tem ${count} registro(s), pulando`);
     return;
   }
   const cols = columns.join(', ');
   const marks = columns.map(() => '?').join(', ');
-  const stmt = db.prepare(`INSERT INTO ${table} (${cols}) VALUES (${marks})`);
-  for (const row of rows) stmt.run(...columns.map((c) => row[c] ?? null));
+  const sql = `INSERT INTO ${table} (${cols}) VALUES (${marks})`;
+  for (const row of rows) await q.run(sql, ...columns.map((c) => row[c] ?? null));
   console.log(`· ${table}: ${rows.length} registro(s)`);
 }
 
-function seedPosts(authorId) {
-  if (q.get('SELECT COUNT(*) AS n FROM posts').n > 0) {
+async function seedPosts(authorId) {
+  if ((await q.get('SELECT COUNT(*) AS n FROM posts')).n > 0) {
     console.log('· posts: já existem, pulando');
     return;
   }
 
   let offsetDays = 3;
   for (const p of POSTS) {
-    const cat = q.get('SELECT id FROM categories WHERE slug = ?', p.category);
+    const cat = await q.get('SELECT id FROM categories WHERE slug = ?', p.category);
     const stats = readingStats(p.body);
     const published = new Date(Date.now() - offsetDays * 864e5).toISOString().slice(0, 19).replace('T', ' ');
     offsetDays += 9;
 
-    const info = q.run(
+    const info = await q.run(
       `INSERT INTO posts
        (slug, title, subtitle, excerpt, body_md, body_html, category_id, author_id,
         status, featured, published_at, reading_time, word_count, seo_description)
@@ -1031,50 +1019,51 @@ function seedPosts(authorId) {
 
     for (const name of p.tags) {
       const slug = slugify(name);
-      q.run('INSERT OR IGNORE INTO tags (slug, name) VALUES (?, ?)', slug, name);
-      const tag = q.get('SELECT id FROM tags WHERE slug = ?', slug);
-      q.run('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)', postId, tag.id);
+      await q.run('INSERT INTO tags (slug, name) VALUES (?, ?) ON CONFLICT (slug) DO NOTHING', slug, name);
+      const tag = await q.get('SELECT id FROM tags WHERE slug = ?', slug);
+      await q.run('INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING', postId, tag.id);
     }
-    reindexPost(postId);
+    await reindexPost(postId);
   }
   console.log(`· posts: ${POSTS.length} publicados`);
 }
 
-function main() {
-  if (RESET) reset();
+async function main() {
+  await init();
+  if (RESET) await reset();
 
-  const authorId = ensureAdmin();
+  const authorId = await ensureAdmin();
 
-  seedTable('categories', CATEGORIES, ['slug', 'name', 'description', 'color', 'position']);
-  seedTable(
+  await seedTable('categories', CATEGORIES, ['slug', 'name', 'description', 'color', 'position']);
+  await seedTable(
     'timeline',
     [...TIMELINE, ...FORMACAO],
     ['period', 'sort_year', 'title', 'org', 'description', 'kind'],
   );
-  seedTable(
+  await seedTable(
     'research_lines',
     RESEARCH_LINES.map((r, i) => ({ ...r, position: i })),
     ['title', 'summary', 'keywords', 'icon', 'position'],
   );
-  seedTable(
+  await seedTable(
     'projects',
     PROJECTS.map((p, i) => ({ ...p, position: i })),
     ['title', 'period', 'role', 'funder', 'status', 'kind', 'description', 'position'],
   );
-  seedTable(
+  await seedTable(
     'publications',
     [...PUBLICATIONS, ...LIVROS].map((p, i) => ({ kind: 'artigo', highlight: 0, ...p, position: i })),
     ['year', 'authors', 'title', 'venue', 'details', 'citations', 'kind', 'highlight', 'position'],
   );
-  seedTable('awards', AWARDS, ['year', 'title', 'org']);
+  await seedTable('awards', AWARDS, ['year', 'title', 'org']);
 
-  seedPosts(authorId);
+  await seedPosts(authorId);
 
-  const settings = getSettings();
+  const settings = await getSettings();
   if (!settings.seeded) {
-    setSetting('seeded', '1');
-    setSetting('site_title', 'Maria Cristina dos Santos Sobreira de Sampaio');
-    setSetting(
+    await setSetting('seeded', '1');
+    await setSetting('site_title', 'Maria Cristina dos Santos Sobreira de Sampaio');
+    await setSetting(
       'site_tagline',
       'Imunologia, animais peçonhentos e ciência feita na Amazônia',
     );
@@ -1084,4 +1073,10 @@ function main() {
   console.log('\nPronto. Rode "npm start" e abra http://localhost:3000\n');
 }
 
-main();
+main()
+  .then(encerrar)
+  .catch(async (err) => {
+    console.error('\nFalhou:', err.message);
+    await encerrar().catch(() => {});
+    process.exit(1);
+  });

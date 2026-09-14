@@ -36,10 +36,10 @@ function passwordProblem(password) {
 
 /* --------------------------------------------------------------- sessions */
 
-function createSession(userId, req) {
+async function createSession(userId, req) {
   const id = crypto.randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + SESSION_DAYS * 864e5);
-  q.run(
+  await q.run(
     'INSERT INTO sessions (id, user_id, expires_at, ip, ua) VALUES (?, ?, ?, ?, ?)',
     id,
     userId,
@@ -47,21 +47,21 @@ function createSession(userId, req) {
     req.ip || '',
     String(req.get('user-agent') || '').slice(0, 250),
   );
-  q.run("UPDATE users SET last_login = datetime('now') WHERE id = ?", userId);
-  q.run("DELETE FROM sessions WHERE expires_at < datetime('now')");
+  await q.run("UPDATE users SET last_login = datetime('now') WHERE id = ?", userId);
+  await q.run("DELETE FROM sessions WHERE expires_at < datetime('now')");
   return { id, expires };
 }
 
-function destroySession(id) {
-  if (id) q.run('DELETE FROM sessions WHERE id = ?', id);
+async function destroySession(id) {
+  if (id) await q.run('DELETE FROM sessions WHERE id = ?', id);
 }
 
 /** Middleware: popula req.user quando houver sessão válida. */
-function attachUser(req, res, next) {
+async function attachUser(req, res, next) {
   req.user = null;
   const sid = req.cookies?.[SESSION_COOKIE];
   if (sid) {
-    const row = q.get(
+    const row = await q.get(
       `SELECT u.* FROM sessions s
          JOIN users u ON u.id = s.user_id
         WHERE s.id = ? AND s.expires_at > datetime('now')`,

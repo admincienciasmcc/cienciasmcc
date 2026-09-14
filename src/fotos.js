@@ -13,7 +13,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { q, UPLOAD_DIR } = require('./db');
+const { q, init, encerrar, UPLOAD_DIR } = require('./db');
 
 /* Curadoria: espécies e temas que aparecem na pesquisa dela. */
 const FOTOS = [
@@ -144,11 +144,11 @@ async function baixar(foto, meta) {
   const credito = `Foto: ${meta.autor} · ${meta.licenca} · Wikimedia Commons`;
   const size = fs.statSync(destino).size;
 
-  const existente = q.get('SELECT id FROM media WHERE filename = ?', publico);
+  const existente = await q.get('SELECT id FROM media WHERE filename = ?', publico);
   if (existente) {
-    q.run('UPDATE media SET alt = ?, credit = ? WHERE id = ?', foto.alt, credito, existente.id);
+    await q.run('UPDATE media SET alt = ?, credit = ? WHERE id = ?', foto.alt, credito, existente.id);
   } else {
-    q.run(
+    await q.run(
       'INSERT INTO media (filename, original, mime, size, alt, credit) VALUES (?,?,?,?,?,?)',
       publico,
       foto.file,
@@ -191,6 +191,7 @@ const ILUSTRACOES = [
 ];
 
 async function main() {
+  await init();
   console.log('Buscando informações das fotos no Wikimedia Commons…\n');
   const meta = await metadados(FOTOS.map((f) => f.file));
 
@@ -212,7 +213,7 @@ async function main() {
 
   console.log('\nIlustrando os posts de exemplo…');
   for (const ilustra of ILUSTRACOES) {
-    const post = q.get('SELECT id, title FROM posts WHERE title LIKE ?', `%${ilustra.procura}%`);
+    const post = await q.get('SELECT id, title FROM posts WHERE title ILIKE ?', `%${ilustra.procura}%`);
     if (!post) {
       console.log(`  · post não encontrado: ${ilustra.procura}`);
       continue;
@@ -220,15 +221,15 @@ async function main() {
 
     const capa = baixadas.get(ilustra.capa);
     if (capa) {
-      q.run('UPDATE posts SET cover = ?, cover_credit = ? WHERE id = ?', capa.url, capa.credito, post.id);
+      await q.run('UPDATE posts SET cover = ?, cover_credit = ? WHERE id = ?', capa.url, capa.credito, post.id);
     }
 
-    q.run('DELETE FROM post_images WHERE post_id = ?', post.id);
+    await q.run('DELETE FROM post_images WHERE post_id = ?', post.id);
     let pos = 0;
     for (const item of ilustra.galeria) {
       const foto = baixadas.get(item.slug);
       if (!foto) continue;
-      q.run(
+      await q.run(
         'INSERT INTO post_images (post_id, url, caption, credit, position) VALUES (?,?,?,?,?)',
         post.id,
         foto.url,
@@ -244,7 +245,8 @@ async function main() {
   console.log('\nPronto. As fotos aparecem em Administrador → Imagens.\n');
 }
 
-main().catch((err) => {
+main().then(encerrar).catch(async (err) => {
+  await encerrar().catch(() => {});
   console.error('Falha ao baixar as fotos:', err.message);
   console.error('Sem internet? O site funciona normalmente; envie fotos próprias em /admin/midia.');
   process.exit(1);

@@ -1,40 +1,36 @@
 'use strict';
 
 const path = require('node:path');
-const fs = require('node:fs');
 const crypto = require('node:crypto');
 const express = require('express');
+const { criarRouter } = require('../rota');
 const multer = require('multer');
 
-const { q, db, reindexPost, getSettings, setSetting, log, UPLOAD_DIR } = require('../db');
+const { q, reindexPost, getSettings, setSetting, log } = require('../db');
 const auth = require('../auth');
 const intel = require('../intel');
 const ai = require('../ai');
 const { renderMarkdown, renderComment } = require('../markdown');
+const storage = require('../storage');
 const { formatDate } = require('./public');
 
-const router = express.Router();
+const router = criarRouter();
 
 /* ---------------------------------------------------------------- setup */
 
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
   res.locals.layoutAdmin = true;
   res.locals.csrf = auth.csrfToken(req, res);
   res.locals.aiEnabled = ai.enabled();
   res.locals.fmt = formatDate;
-  res.locals.pessoas = q.all('SELECT * FROM people ORDER BY position, id');
+  res.locals.pessoas = await q.all('SELECT * FROM people ORDER BY position, id');
   next();
 });
 
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: UPLOAD_DIR,
-    filename(req, file, cb) {
-      const ext = path.extname(file.originalname).toLowerCase().slice(0, 8) || '.bin';
-      const base = intel.slugify(path.basename(file.originalname, ext)).slice(0, 40) || 'arquivo';
-      cb(null, `${Date.now().toString(36)}-${base}${ext}`);
-    },
-  }),
+  // em memória: o destino final (disco local ou Supabase Storage) é decidido
+  // em src/storage.js, porque no Vercel não há disco onde gravar
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter(req, file, cb) {
     const ok = /^image\/(jpeg|png|gif|webp|avif|svg\+xml)$/.test(file.mimetype);
@@ -44,7 +40,7 @@ const upload = multer({
 
 /* ---------------------------------------------------------------- login */
 
-router.get('/entrar', (req, res) => {
+router.get('/entrar', async (req, res) => {
   if (req.user) return res.redirect('/admin');
   res.render('admin/login', {
     title: 'Entrar',
@@ -53,7 +49,7 @@ router.get('/entrar', (req, res) => {
   });
 });
 
-router.post('/entrar', auth.checkCsrf, (req, res) => {
+router.post('/entrar', auth.checkCsrf, async (req, res) => {
   const ip = req.ip || '';
   const destino = String(req.body.next || '/admin');
   const back = (msg) =>
@@ -65,7 +61,7 @@ router.post('/entrar', auth.checkCsrf, (req, res) => {
 
   const email = String(req.body.email || '').trim().toLowerCase();
   const senha = String(req.body.senha || '');
-  const user = q.get('SELECT * FROM users WHERE lower(email) = ?', email);
+  const user = await q.get('SELECT * FROM users WHERE lower(email) = ?', email);
 
   if (!user || !auth.verifyPassword(senha, user.password_hash)) {
     auth.registerFailure(ip);
@@ -73,19 +69,19 @@ router.post('/entrar', auth.checkCsrf, (req, res) => {
   }
 
   auth.clearFailures(ip);
-  const session = auth.createSession(user.id, req);
+  const session = await auth.createSession(user.id, req);
   res.cookie(auth.SESSION_COOKIE, session.id, {
     httpOnly: true,
     sameSite: 'lax',
     expires: session.expires,
     secure: req.protocol === 'https',
   });
-  log(user.id, 'login', ip);
+  await log(user.id, 'login', ip);
   res.redirect(destino.startsWith('/admin') ? destino : '/admin');
 });
 
-router.post('/sair', auth.checkCsrf, (req, res) => {
-  auth.destroySession(req.cookies?.[auth.SESSION_COOKIE]);
+router.post('/sair', auth.checkCsrf, async (req, res) => {
+  await auth.destroySession(req.cookies?.[auth.SESSION_COOKIE]);
   res.clearCookie(auth.SESSION_COOKIE);
   res.redirect('/admin/entrar');
 });
@@ -93,41 +89,50 @@ router.post('/sair', auth.checkCsrf, (req, res) => {
 /* ------------------------------------------------ tudo abaixo exige login */
 
 router.use(auth.requireAuth);
-router.use(auth.checkCsrf);
+
+/*
+ * Em formulários com arquivo o corpo é multipart, que o express.urlencoded não
+ * lê — o _csrf só aparece depois que o multer processa. Por isso essas
+ * requisições pulam a conferência aqui e a fazem logo após o upload.
+ */
+router.use((req, res, next) => {
+  if (req.is('multipart/form-data')) return next();
+  return auth.checkCsrf(req, res, next);
+});
 
 /* ------------------------------------------------------------ dashboard */
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const counts = {
-    published: q.get("SELECT COUNT(*) AS n FROM posts WHERE status = 'published'").n,
-    drafts: q.get("SELECT COUNT(*) AS n FROM posts WHERE status = 'draft'").n,
-    scheduled: q.get("SELECT COUNT(*) AS n FROM posts WHERE status = 'scheduled'").n,
-    pending: q.get("SELECT COUNT(*) AS n FROM comments WHERE status = 'pending'").n,
-    spam: q.get("SELECT COUNT(*) AS n FROM comments WHERE status = 'spam'").n,
-    messages: q.get('SELECT COUNT(*) AS n FROM messages WHERE read_at IS NULL').n,
-    subscribers: q.get('SELECT COUNT(*) AS n FROM subscribers WHERE active = 1').n,
-    views: q.get('SELECT COALESCE(SUM(views),0) AS n FROM posts').n,
+    published: (await q.get("SELECT COUNT(*) AS n FROM posts WHERE status = 'published'")).n,
+    drafts: (await q.get("SELECT COUNT(*) AS n FROM posts WHERE status = 'draft'")).n,
+    scheduled: (await q.get("SELECT COUNT(*) AS n FROM posts WHERE status = 'scheduled'")).n,
+    pending: (await q.get("SELECT COUNT(*) AS n FROM comments WHERE status = 'pending'")).n,
+    spam: (await q.get("SELECT COUNT(*) AS n FROM comments WHERE status = 'spam'")).n,
+    messages: (await q.get('SELECT COUNT(*) AS n FROM messages WHERE read_at IS NULL')).n,
+    subscribers: (await q.get('SELECT COUNT(*) AS n FROM subscribers WHERE active = 1')).n,
+    views: (await q.get('SELECT COALESCE(SUM(views),0) AS n FROM posts')).n,
   };
 
-  const recentPosts = q.all(
+  const recentPosts = await q.all(
     `SELECT p.*, c.name AS category_name FROM posts p
        LEFT JOIN categories c ON c.id = p.category_id
       ORDER BY p.updated_at DESC LIMIT 6`,
   );
 
-  const pendingComments = q.all(
+  const pendingComments = (await q.all(
     `SELECT co.*, p.title AS post_title, p.slug AS post_slug FROM comments co
        JOIN posts p ON p.id = co.post_id
       WHERE co.status = 'pending' ORDER BY co.created_at DESC LIMIT 5`,
-  ).map((c) => ({ ...c, html: renderComment(c.body) }));
+  )).map((c) => ({ ...c, html: renderComment(c.body) }));
 
-  const topPosts = q.all(
+  const topPosts = await q.all(
     `SELECT title, slug, views FROM posts WHERE status = 'published'
       ORDER BY views DESC LIMIT 5`,
   );
 
   // série de visualizações dos últimos 14 dias
-  const series = q.all(
+  const series = await q.all(
     `SELECT day, SUM(count) AS n FROM post_views
       WHERE day >= date('now','-13 days') GROUP BY day ORDER BY day`,
   );
@@ -138,11 +143,11 @@ router.get('/', (req, res) => {
   }
 
   const ideas = intel.suggestTopics({
-    tags: q.all(
+    tags: await q.all(
       `SELECT t.name, COUNT(*) AS n FROM tags t JOIN post_tags pt ON pt.tag_id = t.id
         GROUP BY t.id ORDER BY n DESC LIMIT 6`,
     ),
-    categories: q.all(
+    categories: await q.all(
       `SELECT c.name, c.slug,
               EXISTS(SELECT 1 FROM posts p WHERE p.category_id = c.id
                        AND p.status='published' AND p.published_at > datetime('now','-120 days')) AS recent
@@ -164,7 +169,7 @@ router.get('/', (req, res) => {
 
 /* --------------------------------------------------------------- posts  */
 
-router.get('/posts', (req, res) => {
+router.get('/posts', async (req, res) => {
   const status = req.query.status || '';
   const termo = (req.query.q || '').trim();
   let sql = `SELECT p.*, c.name AS category_name FROM posts p
@@ -175,32 +180,32 @@ router.get('/posts', (req, res) => {
     params.push(status);
   }
   if (termo) {
-    sql += ' AND (p.title LIKE ? OR p.body_md LIKE ?)';
+    sql += ' AND (p.title ILIKE ? OR p.body_md ILIKE ?)';
     params.push(`%${termo}%`, `%${termo}%`);
   }
   sql += ' ORDER BY p.updated_at DESC LIMIT 100';
 
   res.render('admin/posts', {
     title: 'Posts',
-    posts: q.all(sql, ...params),
+    posts: await q.all(sql, ...params),
     status,
     termo,
     counts: {
-      all: q.get('SELECT COUNT(*) AS n FROM posts').n,
-      published: q.get("SELECT COUNT(*) AS n FROM posts WHERE status='published'").n,
-      draft: q.get("SELECT COUNT(*) AS n FROM posts WHERE status='draft'").n,
-      scheduled: q.get("SELECT COUNT(*) AS n FROM posts WHERE status='scheduled'").n,
+      all: (await q.get('SELECT COUNT(*) AS n FROM posts')).n,
+      published: (await q.get("SELECT COUNT(*) AS n FROM posts WHERE status='published'")).n,
+      draft: (await q.get("SELECT COUNT(*) AS n FROM posts WHERE status='draft'")).n,
+      scheduled: (await q.get("SELECT COUNT(*) AS n FROM posts WHERE status='scheduled'")).n,
     },
   });
 });
 
-function editorData(post) {
+async function editorData(post) {
   const tags = post
-    ? q
+    ? (await q
         .all(
           'SELECT t.name FROM tags t JOIN post_tags pt ON pt.tag_id = t.id WHERE pt.post_id = ?',
           post.id,
-        )
+        ))
         .map((t) => t.name)
     : [];
   return {
@@ -210,32 +215,32 @@ function editorData(post) {
       ? intel.auditPost({
           ...post,
           tagCount: tags.length,
-          galleryCount: q.get(
+          galleryCount: (await q.get(
             'SELECT COUNT(*) AS n FROM post_images WHERE post_id = ?',
             post.id,
-          ).n,
+          )).n,
         })
       : null,
-    media: q.all('SELECT * FROM media ORDER BY created_at DESC LIMIT 60'),
-    allTags: q.all('SELECT name FROM tags ORDER BY name').map((t) => t.name),
+    media: await q.all('SELECT * FROM media ORDER BY created_at DESC LIMIT 60'),
+    allTags: (await q.all('SELECT name FROM tags ORDER BY name')).map((t) => t.name),
     gallery: post
-      ? q.all('SELECT * FROM post_images WHERE post_id = ? ORDER BY position, id', post.id)
+      ? await q.all('SELECT * FROM post_images WHERE post_id = ? ORDER BY position, id', post.id)
       : [],
   };
 }
 
 /** Regrava a galeria do post a partir dos campos enviados pelo formulário. */
-function syncGallery(postId, body) {
+async function syncGallery(postId, body) {
   const urls = [].concat(body['gallery_url[]'] || body.gallery_url || []);
   const captions = [].concat(body['gallery_caption[]'] || body.gallery_caption || []);
   const credits = [].concat(body['gallery_credit[]'] || body.gallery_credit || []);
 
-  q.run('DELETE FROM post_images WHERE post_id = ?', postId);
+  await q.run('DELETE FROM post_images WHERE post_id = ?', postId);
   let position = 0;
   for (let i = 0; i < urls.length; i += 1) {
     const url = String(urls[i] || '').trim();
     if (!url) continue;
-    q.run(
+    await q.run(
       'INSERT INTO post_images (post_id, url, caption, credit, position) VALUES (?,?,?,?,?)',
       postId,
       url,
@@ -248,21 +253,21 @@ function syncGallery(postId, body) {
   return position;
 }
 
-router.get('/posts/novo', (req, res) => {
+router.get('/posts/novo', async (req, res) => {
   res.render('admin/post-edit', {
     title: 'Novo post',
-    ...editorData(null),
+    ...(await editorData(null)),
   });
 });
 
-router.get('/posts/:id', (req, res, next) => {
-  const post = q.get('SELECT * FROM posts WHERE id = ?', req.params.id);
+router.get('/posts/:id', async (req, res, next) => {
+  const post = await q.get('SELECT * FROM posts WHERE id = ?', req.params.id);
   if (!post) return next();
-  res.render('admin/post-edit', { title: 'Editar post', ...editorData(post) });
+  res.render('admin/post-edit', { title: 'Editar post', ...(await editorData(post)) });
 });
 
-function syncTags(postId, raw) {
-  q.run('DELETE FROM post_tags WHERE post_id = ?', postId);
+async function syncTags(postId, raw) {
+  await q.run('DELETE FROM post_tags WHERE post_id = ?', postId);
   const names = String(raw || '')
     .split(',')
     .map((t) => t.trim())
@@ -271,29 +276,29 @@ function syncTags(postId, raw) {
   for (const name of names) {
     const slug = intel.slugify(name);
     if (!slug) continue;
-    q.run('INSERT OR IGNORE INTO tags (slug, name) VALUES (?, ?)', slug, name);
-    const tag = q.get('SELECT id FROM tags WHERE slug = ?', slug);
-    q.run('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)', postId, tag.id);
+    await q.run('INSERT INTO tags (slug, name) VALUES (?, ?) ON CONFLICT (slug) DO NOTHING', slug, name);
+    const tag = await q.get('SELECT id FROM tags WHERE slug = ?', slug);
+    await q.run('INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING', postId, tag.id);
   }
 }
 
-function uniqueSlug(base, excludeId = 0) {
+async function uniqueSlug(base, excludeId = 0) {
   let slug = intel.slugify(base) || `post-${Date.now().toString(36)}`;
   let n = 1;
-  while (q.get('SELECT id FROM posts WHERE slug = ? AND id != ?', slug, excludeId)) {
+  while (await q.get('SELECT id FROM posts WHERE slug = ? AND id != ?', slug, excludeId)) {
     n += 1;
     slug = `${intel.slugify(base)}-${n}`;
   }
   return slug;
 }
 
-router.post('/posts/salvar', (req, res) => {
+router.post('/posts/salvar', async (req, res) => {
   const b = req.body;
   const id = parseInt(b.id, 10) || 0;
   const title = String(b.title || '').trim() || 'Sem título';
   const body_md = String(b.body_md || '');
   const stats = intel.readingStats(body_md);
-  const slug = uniqueSlug(b.slug || title, id);
+  const slug = await uniqueSlug(b.slug || title, id);
 
   let status = ['draft', 'published', 'scheduled'].includes(b.status) ? b.status : 'draft';
   let publishedAt = b.published_at ? String(b.published_at).replace('T', ' ') + ':00' : null;
@@ -333,7 +338,7 @@ router.post('/posts/salvar', (req, res) => {
   let postId = id;
   if (id) {
     const cols = Object.keys(fields).map((k) => `${k} = ?`).join(', ');
-    q.run(
+    await q.run(
       `UPDATE posts SET ${cols}, updated_at = datetime('now') WHERE id = ?`,
       ...Object.values(fields),
       id,
@@ -341,7 +346,7 @@ router.post('/posts/salvar', (req, res) => {
   } else {
     const cols = Object.keys(fields).join(', ');
     const marks = Object.keys(fields).map(() => '?').join(', ');
-    const info = q.run(
+    const info = await q.run(
       `INSERT INTO posts (${cols}, author_id) VALUES (${marks}, ?)`,
       ...Object.values(fields),
       req.user.id,
@@ -349,31 +354,30 @@ router.post('/posts/salvar', (req, res) => {
     postId = Number(info.lastInsertRowid);
   }
 
-  syncTags(postId, b.tags);
-  syncGallery(postId, b);
-  reindexPost(postId);
-  log(req.user.id, id ? 'post.update' : 'post.create', title);
+  await syncTags(postId, b.tags);
+  await syncGallery(postId, b);
+  await reindexPost(postId);
+  await log(req.user.id, id ? 'post.update' : 'post.create', title);
 
   const msg = status === 'published' ? 'Post publicado.' : 'Alterações salvas.';
   res.redirect(`/admin/posts/${postId}?ok=${encodeURIComponent(msg)}`);
 });
 
-router.post('/posts/:id/excluir', (req, res) => {
-  const post = q.get('SELECT title FROM posts WHERE id = ?', req.params.id);
-  q.run('DELETE FROM posts WHERE id = ?', req.params.id);
-  q.run('DELETE FROM posts_fts WHERE rowid = ?', req.params.id);
-  log(req.user.id, 'post.delete', post?.title || req.params.id);
+router.post('/posts/:id/excluir', async (req, res) => {
+  const post = await q.get('SELECT title FROM posts WHERE id = ?', req.params.id);
+  await q.run('DELETE FROM posts WHERE id = ?', req.params.id);
+  await log(req.user.id, 'post.delete', post?.title || req.params.id);
   res.redirect(`/admin/posts?ok=${encodeURIComponent('Post excluído.')}`);
 });
 
-router.post('/posts/:id/duplicar', (req, res) => {
-  const p = q.get('SELECT * FROM posts WHERE id = ?', req.params.id);
+router.post('/posts/:id/duplicar', async (req, res) => {
+  const p = await q.get('SELECT * FROM posts WHERE id = ?', req.params.id);
   if (!p) return res.redirect('/admin/posts');
-  const info = q.run(
+  const info = await q.run(
     `INSERT INTO posts (slug, title, subtitle, excerpt, body_md, body_html, cover,
        category_id, author_id, status, allow_comments)
      VALUES (?,?,?,?,?,?,?,?,?,'draft',1)`,
-    uniqueSlug(`${p.title}-copia`),
+    await uniqueSlug(`${p.title}-copia`),
     `${p.title} (cópia)`,
     p.subtitle,
     p.excerpt,
@@ -389,9 +393,9 @@ router.post('/posts/:id/duplicar', (req, res) => {
 /* ------------------------------------------------- API do editor (fetch) */
 
 /** Análise instantânea: resumo, tags, categoria, SEO, legibilidade. */
-router.post('/api/analisar', (req, res) => {
+router.post('/api/analisar', async (req, res) => {
   const { title = '', body = '', tags = '', cover = '', category_id = '' } = req.body;
-  const categories = q.all('SELECT * FROM categories ORDER BY position');
+  const categories = await q.all('SELECT * FROM categories ORDER BY position');
   const tagCount = String(tags).split(',').filter((t) => t.trim()).length;
 
   res.json({
@@ -449,15 +453,15 @@ router.post('/api/ia/:acao', async (req, res) => {
 
 /* ---------------------------------------------------------- comentários */
 
-router.get('/comentarios', (req, res) => {
+router.get('/comentarios', async (req, res) => {
   const status = req.query.status || 'pending';
-  const rows = q
+  const rows = (await q
     .all(
       `SELECT co.*, p.title AS post_title, p.slug AS post_slug FROM comments co
          JOIN posts p ON p.id = co.post_id
         WHERE co.status = ? ORDER BY co.created_at DESC LIMIT 200`,
       status,
-    )
+    ))
     .map((c) => ({ ...c, html: renderComment(c.body) }));
 
   res.render('admin/comentarios', {
@@ -465,28 +469,28 @@ router.get('/comentarios', (req, res) => {
     comments: rows,
     status,
     counts: {
-      pending: q.get("SELECT COUNT(*) AS n FROM comments WHERE status='pending'").n,
-      approved: q.get("SELECT COUNT(*) AS n FROM comments WHERE status='approved'").n,
-      spam: q.get("SELECT COUNT(*) AS n FROM comments WHERE status='spam'").n,
-      trash: q.get("SELECT COUNT(*) AS n FROM comments WHERE status='trash'").n,
+      pending: (await q.get("SELECT COUNT(*) AS n FROM comments WHERE status='pending'")).n,
+      approved: (await q.get("SELECT COUNT(*) AS n FROM comments WHERE status='approved'")).n,
+      spam: (await q.get("SELECT COUNT(*) AS n FROM comments WHERE status='spam'")).n,
+      trash: (await q.get("SELECT COUNT(*) AS n FROM comments WHERE status='trash'")).n,
     },
   });
 });
 
-router.post('/comentarios/:id/:acao', (req, res) => {
+router.post('/comentarios/:id/:acao', async (req, res) => {
   const { id, acao } = req.params;
   const back = req.get('referer') || '/admin/comentarios';
   const mapa = { aprovar: 'approved', spam: 'spam', lixo: 'trash', pendente: 'pending' };
 
   if (acao === 'excluir') {
-    q.run('DELETE FROM comments WHERE id = ?', id);
+    await q.run('DELETE FROM comments WHERE id = ?', id);
   } else if (mapa[acao]) {
-    q.run('UPDATE comments SET status = ? WHERE id = ?', mapa[acao], id);
+    await q.run('UPDATE comments SET status = ? WHERE id = ?', mapa[acao], id);
   } else if (acao === 'responder') {
-    const parent = q.get('SELECT * FROM comments WHERE id = ?', id);
+    const parent = await q.get('SELECT * FROM comments WHERE id = ?', id);
     const texto = String(req.body.resposta || '').trim();
     if (parent && texto) {
-      q.run(
+      await q.run(
         `INSERT INTO comments (post_id, parent_id, author_name, body, status, by_owner)
          VALUES (?,?,?,?,'approved',1)`,
         parent.post_id,
@@ -495,7 +499,7 @@ router.post('/comentarios/:id/:acao', (req, res) => {
         texto,
       );
       if (parent.status === 'pending') {
-        q.run("UPDATE comments SET status = 'approved' WHERE id = ?", parent.id);
+        await q.run("UPDATE comments SET status = 'approved' WHERE id = ?", parent.id);
       }
     }
   }
@@ -504,7 +508,7 @@ router.post('/comentarios/:id/:acao', (req, res) => {
 
 /** Analisa um comentário com a IA e devolve veredito + resposta sugerida. */
 router.post('/api/comentario/:id/analisar', async (req, res) => {
-  const c = q.get(
+  const c = await q.get(
     `SELECT co.*, p.title AS post_title FROM comments co JOIN posts p ON p.id = co.post_id
       WHERE co.id = ?`,
     req.params.id,
@@ -524,18 +528,19 @@ router.post('/api/comentario/:id/analisar', async (req, res) => {
 
 /* --------------------------------------------------------------- mídia  */
 
-router.get('/midia', (req, res) => {
+router.get('/midia', async (req, res) => {
   res.render('admin/midia', {
     title: 'Imagens',
-    media: q.all('SELECT * FROM media ORDER BY created_at DESC LIMIT 200'),
+    media: await q.all('SELECT * FROM media ORDER BY created_at DESC LIMIT 200'),
   });
 });
 
-router.post('/midia/enviar', upload.array('arquivos', 10), (req, res) => {
+router.post('/midia/enviar', upload.array('arquivos', 10), auth.checkCsrf, async (req, res) => {
   for (const f of req.files || []) {
-    q.run(
+    const url = await storage.guardar(f);
+    await q.run(
       'INSERT INTO media (filename, original, mime, size, alt) VALUES (?,?,?,?,?)',
-      `/uploads/${f.filename}`,
+      url,
       f.originalname,
       f.mimetype,
       f.size,
@@ -545,18 +550,17 @@ router.post('/midia/enviar', upload.array('arquivos', 10), (req, res) => {
   res.redirect(`/admin/midia?ok=${encodeURIComponent(`${(req.files || []).length} imagem(ns) enviada(s).`)}`);
 });
 
-router.post('/midia/:id/excluir', (req, res) => {
-  const m = q.get('SELECT * FROM media WHERE id = ?', req.params.id);
+router.post('/midia/:id/excluir', async (req, res) => {
+  const m = await q.get('SELECT * FROM media WHERE id = ?', req.params.id);
   if (m) {
-    const file = path.join(UPLOAD_DIR, path.basename(m.filename));
-    fs.rm(file, { force: true }, () => {});
-    q.run('DELETE FROM media WHERE id = ?', m.id);
+    await storage.apagar(m.filename).catch(() => {});
+    await q.run('DELETE FROM media WHERE id = ?', m.id);
   }
   res.redirect('/admin/midia?ok=Imagem removida.');
 });
 
-router.post('/midia/:id/alt', (req, res) => {
-  q.run(
+router.post('/midia/:id/alt', async (req, res) => {
+  await q.run(
     'UPDATE media SET alt = ?, credit = ? WHERE id = ?',
     String(req.body.alt || '').slice(0, 200),
     String(req.body.credit || '').slice(0, 200),
@@ -567,18 +571,18 @@ router.post('/midia/:id/alt', (req, res) => {
 
 /* ------------------------------------------------------------ mensagens */
 
-router.get('/mensagens', (req, res) => {
-  const rows = q.all('SELECT * FROM messages ORDER BY created_at DESC LIMIT 200');
-  q.run("UPDATE messages SET read_at = datetime('now') WHERE read_at IS NULL");
+router.get('/mensagens', async (req, res) => {
+  const rows = await q.all('SELECT * FROM messages ORDER BY created_at DESC LIMIT 200');
+  await q.run("UPDATE messages SET read_at = datetime('now') WHERE read_at IS NULL");
   res.render('admin/mensagens', {
     title: 'Mensagens',
     messages: rows,
-    subscribers: q.all('SELECT * FROM subscribers ORDER BY created_at DESC LIMIT 200'),
+    subscribers: await q.all('SELECT * FROM subscribers ORDER BY created_at DESC LIMIT 200'),
   });
 });
 
-router.post('/mensagens/:id/excluir', (req, res) => {
-  q.run('DELETE FROM messages WHERE id = ?', req.params.id);
+router.post('/mensagens/:id/excluir', async (req, res) => {
+  await q.run('DELETE FROM messages WHERE id = ?', req.params.id);
   res.redirect('/admin/mensagens?ok=Mensagem excluída.');
 });
 
@@ -716,15 +720,17 @@ const CV_TABLES = {
   },
 };
 
-router.get('/curriculo/:secao?', (req, res, next) => {
+router.get('/curriculo/:secao?', async (req, res, next) => {
   const key = req.params.secao || 'publicacoes';
   const cfg = CV_TABLES[key];
   if (!cfg) return next();
   const editing = req.query.editar
-    ? q.get(`SELECT * FROM ${cfg.table} WHERE id = ?`, req.query.editar)
+    ? await q.get(`SELECT * FROM ${cfg.table} WHERE id = ?`, req.query.editar)
     : null;
 
-  const quem = parseInt(req.query.quem, 10) || null;
+  // nem toda seção pertence a uma pessoa — as categorias do blog são comuns às duas
+  const temPessoa = (cfg.fields || []).some((f) => f.name === 'person_id');
+  const quem = temPessoa ? parseInt(req.query.quem, 10) || null : null;
   const ondePessoa = quem ? 'WHERE person_id = ?' : '';
   const argsPessoa = quem ? [quem] : [];
 
@@ -733,19 +739,20 @@ router.get('/curriculo/:secao?', (req, res, next) => {
     secoes: Object.entries(CV_TABLES).map(([k, v]) => ({ key: k, label: v.label })),
     key,
     cfg,
-    rows: q.all(
+    rows: await q.all(
       `SELECT * FROM ${cfg.table} ${ondePessoa} ORDER BY ${cfg.order} LIMIT 500`,
       ...argsPessoa,
     ),
     quem,
-    contagens: q.all(
-      `SELECT person_id, COUNT(*) AS n FROM ${cfg.table} GROUP BY person_id`,
-    ),
+    temPessoa,
+    contagens: temPessoa
+      ? await q.all(`SELECT person_id, COUNT(*) AS n FROM ${cfg.table} GROUP BY person_id`)
+      : [],
     editing,
   });
 });
 
-router.post('/curriculo/:secao/salvar', (req, res, next) => {
+router.post('/curriculo/:secao/salvar', async (req, res, next) => {
   const cfg = CV_TABLES[req.params.secao];
   if (!cfg) return next();
   const id = parseInt(req.body.id, 10) || 0;
@@ -763,29 +770,29 @@ router.post('/curriculo/:secao/salvar', (req, res, next) => {
 
   if (id) {
     const cols = Object.keys(data).map((k) => `${k} = ?`).join(', ');
-    q.run(`UPDATE ${cfg.table} SET ${cols} WHERE id = ?`, ...Object.values(data), id);
+    await q.run(`UPDATE ${cfg.table} SET ${cols} WHERE id = ?`, ...Object.values(data), id);
   } else {
     const cols = Object.keys(data).join(', ');
     const marks = Object.keys(data).map(() => '?').join(', ');
-    q.run(`INSERT INTO ${cfg.table} (${cols}) VALUES (${marks})`, ...Object.values(data));
+    await q.run(`INSERT INTO ${cfg.table} (${cols}) VALUES (${marks})`, ...Object.values(data));
   }
-  log(req.user.id, `cv.${cfg.table}.save`, data.title || data.name || '');
+  await log(req.user.id, `cv.${cfg.table}.save`, data.title || data.name || '');
   res.redirect(`/admin/curriculo/${req.params.secao}?ok=Registro salvo.`);
 });
 
-router.post('/curriculo/:secao/:id/excluir', (req, res, next) => {
+router.post('/curriculo/:secao/:id/excluir', async (req, res, next) => {
   const cfg = CV_TABLES[req.params.secao];
   if (!cfg) return next();
-  q.run(`DELETE FROM ${cfg.table} WHERE id = ?`, req.params.id);
+  await q.run(`DELETE FROM ${cfg.table} WHERE id = ?`, req.params.id);
   res.redirect(`/admin/curriculo/${req.params.secao}?ok=Registro excluído.`);
 });
 
 /* -------------------------------------------------------------- ajustes */
 
-router.get('/ajustes', (req, res) => {
+router.get('/ajustes', async (req, res) => {
   res.render('admin/ajustes', {
     title: 'Ajustes',
-    values: getSettings(),
+    values: await getSettings(),
     conta: req.user,
     aiModel: ai.MODEL,
   });
@@ -810,15 +817,15 @@ const SETTING_KEYS = [
   'portrait_image',
 ];
 
-router.post('/ajustes', (req, res) => {
+router.post('/ajustes', async (req, res) => {
   for (const key of SETTING_KEYS) {
-    if (key in req.body) setSetting(key, String(req.body[key] ?? '').trim());
+    if (key in req.body) await setSetting(key, String(req.body[key] ?? '').trim());
   }
-  log(req.user.id, 'settings.update');
+  await log(req.user.id, 'settings.update');
   res.redirect('/admin/ajustes?ok=Ajustes salvos.');
 });
 
-router.post('/ajustes/senha', (req, res) => {
+router.post('/ajustes/senha', async (req, res) => {
   const atual = String(req.body.atual || '');
   const nova = String(req.body.nova || '');
   const confirma = String(req.body.confirma || '');
@@ -829,14 +836,14 @@ router.post('/ajustes/senha', (req, res) => {
   const problema = auth.passwordProblem(nova);
   if (problema) return fail(problema);
 
-  q.run('UPDATE users SET password_hash = ? WHERE id = ?', auth.hashPassword(nova), req.user.id);
-  q.run('DELETE FROM sessions WHERE user_id = ? AND id != ?', req.user.id, req.sessionId);
-  log(req.user.id, 'password.change');
+  await q.run('UPDATE users SET password_hash = ? WHERE id = ?', auth.hashPassword(nova), req.user.id);
+  await q.run('DELETE FROM sessions WHERE user_id = ? AND id != ?', req.user.id, req.sessionId);
+  await log(req.user.id, 'password.change');
   res.redirect('/admin/ajustes?ok=Senha alterada.');
 });
 
-router.post('/ajustes/perfil', (req, res) => {
-  q.run(
+router.post('/ajustes/perfil', async (req, res) => {
+  await q.run(
     'UPDATE users SET name = ?, email = ?, bio = ?, avatar = ? WHERE id = ?',
     String(req.body.name || '').trim(),
     String(req.body.email || '').trim(),
@@ -849,7 +856,7 @@ router.post('/ajustes/perfil', (req, res) => {
 
 /* --------------------------------------------------------------- backup */
 
-router.get('/backup.json', (req, res) => {
+router.get('/backup.json', async (req, res) => {
   const dump = {};
   const tables = [
     'posts',
@@ -867,7 +874,7 @@ router.get('/backup.json', (req, res) => {
     'subscribers',
     'media',
   ];
-  for (const t of tables) dump[t] = q.all(`SELECT * FROM ${t}`);
+  for (const t of tables) dump[t] = await q.all(`SELECT * FROM ${t}`);
   dump._exported_at = new Date().toISOString();
   res
     .type('application/json')

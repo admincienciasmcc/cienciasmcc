@@ -12,6 +12,7 @@
     <a class="<%= key === s.key ? 'is-active' : '' %>" href="/admin/curriculo/<%= s.key %>"><%= s.label %></a>
   <% }) %>
 </div>
+<% if (temPessoa) { %>
 <div class="tabs" style="margin-top:-.5rem">
   <span class="muted small" style="align-self:center;margin-right:.35rem">De quem:</span>
   <a class="<%= !quem ? 'is-active' : '' %>" href="/admin/curriculo/<%= key %>">
@@ -23,6 +24,7 @@
     </a>
   <% }) %>
 </div>
+<% } %>
 
 
 <div class="cols cols-main">

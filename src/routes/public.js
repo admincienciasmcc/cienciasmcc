@@ -1,11 +1,12 @@
 'use strict';
 
 const express = require('express');
-const { q, getSettings, log } = require('../db');
+const { criarRouter } = require('../rota');
+const { q, getSettings, log, searchPosts } = require('../db');
 const { renderComment, escapeHtml, outline, renderMarkdown } = require('../markdown');
 const intel = require('../intel');
 
-const router = express.Router();
+const router = criarRouter();
 
 /* ------------------------------------------------------------- pessoas  */
 
@@ -19,43 +20,43 @@ function hidratarPessoa(p) {
   return { ...p, languages: parseJson(p.languages, []), areas: parseJson(p.areas, []) };
 }
 
-function listarPessoas() {
-  return q.all('SELECT * FROM people WHERE active = 1 ORDER BY position, id').map(hidratarPessoa);
+async function listarPessoas() {
+  return (await q.all('SELECT * FROM people WHERE active = 1 ORDER BY position, id')).map(hidratarPessoa);
 }
 
-function acharPessoa(slug) {
-  return hidratarPessoa(q.get('SELECT * FROM people WHERE slug = ? AND active = 1', slug));
+async function acharPessoa(slug) {
+  return hidratarPessoa(await q.get('SELECT * FROM people WHERE slug = ? AND active = 1', slug));
 }
 
 /** Resolve ?quem=slug em um filtro de pessoa reutilizável nas listagens. */
-function filtroPessoa(req) {
+async function filtroPessoa(req) {
   const slug = String(req.query.quem || '').trim();
-  const pessoa = slug ? acharPessoa(slug) : null;
+  const pessoa = slug ? await acharPessoa(slug) : null;
   return { slug: pessoa ? slug : '', pessoa, id: pessoa ? pessoa.id : null };
 }
 
 // disponibiliza as duas em todas as páginas
-router.use((req, res, next) => {
-  res.locals.pessoas = listarPessoas();
+router.use(async (req, res, next) => {
+  res.locals.pessoas = await listarPessoas();
   next();
 });
 
 /* ------------------------------------------------------------- helpers  */
 
-function tagsOf(postId) {
-  return q.all(
+async function tagsOf(postId) {
+  return await q.all(
     `SELECT t.* FROM tags t JOIN post_tags pt ON pt.tag_id = t.id
       WHERE pt.post_id = ? ORDER BY t.name`,
     postId,
   );
 }
 
-function decorate(posts) {
+async function decorate(posts) {
   for (const p of posts) {
-    p.tags = tagsOf(p.id);
+    p.tags = await tagsOf(p.id);
     p.dateLabel = formatDate(p.published_at);
     p.pessoa = p.person_id
-      ? q.get('SELECT slug, short_name, portrait, initials, accent FROM people WHERE id = ?', p.person_id)
+      ? await q.get('SELECT slug, short_name, portrait, initials, accent FROM people WHERE id = ?', p.person_id)
       : null;
   }
   return posts;
@@ -82,52 +83,54 @@ const LIST_SQL = `
 
 /* ---------------------------------------------------------------- home  */
 
-router.get('/', (req, res) => {
-  const featured = decorate(
-    q.all(`${LIST_SQL} AND p.featured = 1 ORDER BY p.published_at DESC LIMIT 2`),
+router.get('/', async (req, res) => {
+  const featured = await decorate(
+    await q.all(`${LIST_SQL} AND p.featured = 1 ORDER BY p.published_at DESC LIMIT 2`),
   );
   const ids = featured.map((p) => p.id);
-  const recent = decorate(
-    q.all(
+  const recent = await decorate(
+    await q.all(
       `${LIST_SQL} ${ids.length ? `AND p.id NOT IN (${ids.join(',')})` : ''}
        ORDER BY p.published_at DESC LIMIT 6`,
     ),
   );
-  const lines = q.all('SELECT * FROM research_lines ORDER BY person_id, position');
+  const lines = await q.all('SELECT * FROM research_lines ORDER BY person_id, position');
   const stats = {
-    posts: q.get(`SELECT COUNT(*) AS n FROM posts p WHERE ${PUBLISHED}`).n,
-    publications: q.get('SELECT COUNT(*) AS n FROM publications').n,
+    posts: (await q.get(`SELECT COUNT(*) AS n FROM posts p WHERE ${PUBLISHED}`)).n,
+    publications: (await q.get('SELECT COUNT(*) AS n FROM publications')).n,
     years: new Date().getFullYear() - 1986,
-    orientations: q.get(
+    orientations: (await q.get(
       "SELECT COUNT(*) AS n FROM mentorships WHERE kind IN ('doutorado','mestrado')",
-    ).n,
+    )).n,
   };
 
-  const pessoas = listarPessoas().map((p) => ({
-    ...p,
-    linhas: q.all(
-      'SELECT title, icon FROM research_lines WHERE person_id = ? ORDER BY position LIMIT 4',
-      p.id,
-    ),
-    posts: q.get(
-      `SELECT COUNT(*) AS n FROM posts p WHERE ${PUBLISHED} AND p.person_id = ?`,
-      p.id,
-    ).n,
-  }));
+  const pessoas = await Promise.all(
+    (await listarPessoas()).map(async (p) => ({
+      ...p,
+      linhas: await q.all(
+        'SELECT title, icon FROM research_lines WHERE person_id = ? ORDER BY position LIMIT 4',
+        p.id,
+      ),
+      posts: (await q.get(
+        `SELECT COUNT(*) AS n FROM posts p WHERE ${PUBLISHED} AND p.person_id = ?`,
+        p.id,
+      )).n,
+    })),
+  );
 
   res.render('public/home', { title: null, featured, recent, lines, stats, pessoas });
 });
 
 /* ---------------------------------------------------------------- blog  */
 
-router.get('/blog', (req, res) => {
-  const settings = getSettings();
+router.get('/blog', async (req, res) => {
+  const settings = await getSettings();
   const perPage = Math.max(3, parseInt(settings.posts_per_page, 10) || 9);
   const page = Math.max(1, parseInt(req.query.pagina, 10) || 1);
   const termo = (req.query.q || '').trim();
   const categoria = (req.query.categoria || '').trim();
   const tag = (req.query.tag || '').trim();
-  const f = filtroPessoa(req);
+  const f = await filtroPessoa(req);
 
   let where = LIST_SQL;
   const params = [];
@@ -135,17 +138,13 @@ router.get('/blog', (req, res) => {
 
   if (termo) {
     try {
-      const hits = q.all(
-        'SELECT rowid AS id FROM posts_fts WHERE posts_fts MATCH ? ORDER BY rank LIMIT 200',
-        termo.replace(/["']/g, ' ') + '*',
-      );
-      matchedIds = hits.map((h) => h.id);
+      matchedIds = await searchPosts(termo);
     } catch {
       matchedIds = [];
     }
     if (!matchedIds.length) {
-      // fallback simples para termos que o FTS não aceita
-      where += ' AND (p.title LIKE ? OR p.excerpt LIKE ? OR p.body_md LIKE ?)';
+      // busca textual não achou nada: tenta o trecho literal, sem diferenciar maiúsculas
+      where += ' AND (p.title ILIKE ? OR p.excerpt ILIKE ? OR p.body_md ILIKE ?)';
       params.push(`%${termo}%`, `%${termo}%`, `%${termo}%`);
     } else {
       where += ` AND p.id IN (${matchedIds.join(',')})`;
@@ -165,13 +164,13 @@ router.get('/blog', (req, res) => {
     params.push(f.id);
   }
 
-  const total = q.get(
+  const total = (await q.get(
     `SELECT COUNT(*) AS n FROM (${where}) AS sub`.replace('SELECT p.*,', 'SELECT p.id,'),
     ...params,
-  ).n;
+  )).n;
 
-  const posts = decorate(
-    q.all(
+  const posts = await decorate(
+    await q.all(
       `${where} ORDER BY p.published_at DESC LIMIT ? OFFSET ?`,
       ...params,
       perPage,
@@ -180,7 +179,7 @@ router.get('/blog', (req, res) => {
   );
 
   const pages = Math.max(1, Math.ceil(total / perPage));
-  const allTags = q.all(
+  const allTags = await q.all(
     `SELECT t.*, COUNT(pt.post_id) AS n FROM tags t
        JOIN post_tags pt ON pt.tag_id = t.id
        JOIN posts p ON p.id = pt.post_id AND ${PUBLISHED}
@@ -203,29 +202,29 @@ router.get('/blog', (req, res) => {
 
 /* ---------------------------------------------------------------- post  */
 
-router.get('/blog/:slug', (req, res, next) => {
-  const post = q.get(`${LIST_SQL} AND p.slug = ?`, req.params.slug);
+router.get('/blog/:slug', async (req, res, next) => {
+  const post = await q.get(`${LIST_SQL} AND p.slug = ?`, req.params.slug);
   if (!post) return next();
 
-  post.tags = tagsOf(post.id);
+  post.tags = await tagsOf(post.id);
   post.dateLabel = formatDate(post.published_at);
   post.outline = outline(post.body_md);
-  post.gallery = q.all(
+  post.gallery = await q.all(
     'SELECT * FROM post_images WHERE post_id = ? ORDER BY position, id',
     post.id,
   );
   post.pessoa = hidratarPessoa(
-    q.get('SELECT * FROM people WHERE id = ?', post.person_id) ||
-      q.get('SELECT * FROM people ORDER BY position LIMIT 1'),
+    await q.get('SELECT * FROM people WHERE id = ?', post.person_id) ||
+      await q.get('SELECT * FROM people ORDER BY position LIMIT 1'),
   );
 
   // visualizações (contagem simples, uma por sessão de navegador)
   const seen = String(req.cookies.mcs_seen || '').split(',');
   if (!seen.includes(String(post.id))) {
-    q.run('UPDATE posts SET views = views + 1 WHERE id = ?', post.id);
-    q.run(
+    await q.run('UPDATE posts SET views = views + 1 WHERE id = ?', post.id);
+    await q.run(
       `INSERT INTO post_views (post_id, day, count) VALUES (?, date('now'), 1)
-       ON CONFLICT(post_id, day) DO UPDATE SET count = count + 1`,
+       ON CONFLICT (post_id, day) DO UPDATE SET count = post_views.count + 1`,
       post.id,
     );
     res.cookie('mcs_seen', [...seen, post.id].filter(Boolean).slice(-60).join(','), {
@@ -235,12 +234,12 @@ router.get('/blog/:slug', (req, res, next) => {
     });
   }
 
-  const comments = q
+  const comments = (await q
     .all(
       `SELECT * FROM comments WHERE post_id = ? AND status = 'approved'
         ORDER BY created_at ASC`,
       post.id,
-    )
+    ))
     .map((c) => ({ ...c, html: renderComment(c.body), dateLabel: formatDate(c.created_at) }));
 
   const roots = comments.filter((c) => !c.parent_id);
@@ -248,8 +247,8 @@ router.get('/blog/:slug', (req, res, next) => {
 
   // relacionados: mesma categoria ou tags em comum
   const tagIds = post.tags.map((t) => t.id);
-  const related = decorate(
-    q.all(
+  const related = await decorate(
+    await q.all(
       `${LIST_SQL} AND p.id != ?
          AND (p.category_id = ?
               ${tagIds.length ? `OR p.id IN (SELECT post_id FROM post_tags WHERE tag_id IN (${tagIds.join(',')}))` : ''})
@@ -265,17 +264,17 @@ router.get('/blog/:slug', (req, res, next) => {
     comments: roots,
     commentCount: comments.length,
     related,
-    canComment: post.allow_comments && getSettings().comment_policy !== 'closed',
+    canComment: post.allow_comments && (await getSettings()).comment_policy !== 'closed',
   });
 });
 
 /* ------------------------------------------------------------ comentar  */
 
-router.post('/blog/:slug/comentar', (req, res, next) => {
-  const post = q.get(`${LIST_SQL} AND p.slug = ?`, req.params.slug);
+router.post('/blog/:slug/comentar', async (req, res, next) => {
+  const post = await q.get(`${LIST_SQL} AND p.slug = ?`, req.params.slug);
   if (!post) return next();
 
-  const settings = getSettings();
+  const settings = await getSettings();
   const back = `/blog/${post.slug}`;
 
   if (!post.allow_comments || settings.comment_policy === 'closed') {
@@ -308,7 +307,7 @@ router.post('/blog/:slug/comentar', (req, res, next) => {
   if (score >= 60) status = 'spam';
   else if (score >= 30) status = 'pending';
 
-  q.run(
+  await q.run(
     `INSERT INTO comments
        (post_id, parent_id, author_name, author_email, author_site, body, status,
         spam_score, spam_reason, ip, ua)
@@ -343,104 +342,106 @@ function jsonSetting(settings, key, fallback) {
   }
 }
 
-router.get('/sobre', (req, res) => {
-  const pessoas = listarPessoas().map((p) => ({
-    ...p,
-    destaques: {
-      publicacoes: q.get('SELECT COUNT(*) AS n FROM publications WHERE person_id = ?', p.id).n,
-      projetos: q.get('SELECT COUNT(*) AS n FROM projects WHERE person_id = ?', p.id).n,
-      orientacoes: q.get('SELECT COUNT(*) AS n FROM mentorships WHERE person_id = ?', p.id).n,
-      anos: q.get(
-        "SELECT MIN(sort_year) AS a FROM timeline WHERE person_id = ? AND sort_year > 0",
+router.get('/sobre', async (req, res) => {
+  const pessoas = await Promise.all(
+    (await listarPessoas()).map(async (p) => ({
+      ...p,
+      destaques: {
+        publicacoes: (await q.get('SELECT COUNT(*) AS n FROM publications WHERE person_id = ?', p.id)).n,
+        projetos: (await q.get('SELECT COUNT(*) AS n FROM projects WHERE person_id = ?', p.id)).n,
+        orientacoes: (await q.get('SELECT COUNT(*) AS n FROM mentorships WHERE person_id = ?', p.id)).n,
+        anos: (await q.get(
+          "SELECT MIN(sort_year) AS a FROM timeline WHERE person_id = ? AND sort_year > 0",
+          p.id,
+        )).a,
+      },
+      linhas: await q.all(
+        'SELECT title, icon FROM research_lines WHERE person_id = ? ORDER BY position LIMIT 4',
         p.id,
-      ).a,
-    },
-    linhas: q.all(
-      'SELECT title, icon FROM research_lines WHERE person_id = ? ORDER BY position LIMIT 4',
-      p.id,
-    ),
-  }));
+      ),
+    })),
+  );
 
   res.render('public/sobre', { title: 'Sobre nós', pessoas });
 });
 
 /* ------------------------------------------------ perfil individual --- */
 
-router.get('/sobre/:slug', (req, res, next) => {
-  const pessoa = acharPessoa(req.params.slug);
+router.get('/sobre/:slug', async (req, res, next) => {
+  const pessoa = await acharPessoa(req.params.slug);
   if (!pessoa) return next();
 
-  const outras = listarPessoas().filter((p) => p.id !== pessoa.id);
+  const outras = (await listarPessoas()).filter((p) => p.id !== pessoa.id);
 
   res.render('public/pessoa', {
     title: pessoa.short_name,
     pessoa,
     outras,
-    carreira: q.all(
+    carreira: await q.all(
       "SELECT * FROM timeline WHERE person_id = ? AND kind = 'carreira' ORDER BY sort_year DESC",
       pessoa.id,
     ),
-    gestao: q.all(
+    gestao: await q.all(
       "SELECT * FROM timeline WHERE person_id = ? AND kind = 'gestao' ORDER BY sort_year DESC",
       pessoa.id,
     ),
-    formacao: q.all(
+    formacao: await q.all(
       "SELECT * FROM timeline WHERE person_id = ? AND kind = 'formacao' ORDER BY sort_year DESC",
       pessoa.id,
     ),
-    awards: q.all('SELECT * FROM awards WHERE person_id = ? ORDER BY year DESC', pessoa.id),
-    teaching: q.all('SELECT * FROM teaching WHERE person_id = ? ORDER BY position, id', pessoa.id),
-    eventos: q.all(
+    awards: await q.all('SELECT * FROM awards WHERE person_id = ? ORDER BY year DESC', pessoa.id),
+    teaching: await q.all('SELECT * FROM teaching WHERE person_id = ? ORDER BY position, id', pessoa.id),
+    eventos: await q.all(
       "SELECT * FROM projects WHERE person_id = ? AND kind = 'evento' ORDER BY position",
       pessoa.id,
     ),
-    linhas: q
-      .all('SELECT * FROM research_lines WHERE person_id = ? ORDER BY position', pessoa.id)
+    linhas: (await q
+      .all('SELECT * FROM research_lines WHERE person_id = ? ORDER BY position', pessoa.id))
       .map((l) => ({ ...l, summaryHtml: renderMarkdown(l.summary || '') })),
     contagens: {
-      publicacoes: q.get('SELECT COUNT(*) AS n FROM publications WHERE person_id = ?', pessoa.id).n,
-      projetos: q.get(
+      publicacoes: (await q.get('SELECT COUNT(*) AS n FROM publications WHERE person_id = ?', pessoa.id)).n,
+      projetos: (await q.get(
         "SELECT COUNT(*) AS n FROM projects WHERE person_id = ? AND kind != 'evento'",
         pessoa.id,
-      ).n,
-      orientacoes: q.get('SELECT COUNT(*) AS n FROM mentorships WHERE person_id = ?', pessoa.id).n,
-      disciplinas: q.get('SELECT COUNT(*) AS n FROM teaching WHERE person_id = ?', pessoa.id).n,
-      posts: q.get(
+      )).n,
+      orientacoes: (await q.get('SELECT COUNT(*) AS n FROM mentorships WHERE person_id = ?', pessoa.id)).n,
+      disciplinas: (await q.get('SELECT COUNT(*) AS n FROM teaching WHERE person_id = ?', pessoa.id)).n,
+      posts: (await q.get(
         `SELECT COUNT(*) AS n FROM posts p WHERE ${PUBLISHED} AND p.person_id = ?`,
         pessoa.id,
-      ).n,
+      )).n,
     },
-    editoria: parseJson(getSettings().editoria, null),
+    editoria: parseJson((await getSettings()).editoria, null),
   });
 });
 
 /* ------------------------------------------------------------ pesquisa  */
 
-router.get('/pesquisa', (req, res) => {
-  const f = filtroPessoa(req);
+router.get('/pesquisa', async (req, res) => {
+  const f = await filtroPessoa(req);
   const onde = f.id ? 'AND person_id = ?' : '';
   const args = f.id ? [f.id] : [];
 
   res.render('public/pesquisa', {
     title: 'Pesquisa',
     filtro: f,
-    lines: q
-      .all(`SELECT * FROM research_lines WHERE 1=1 ${onde} ORDER BY person_id, position`, ...args)
+    lines: (await q
+      .all(`SELECT * FROM research_lines WHERE 1=1 ${onde} ORDER BY person_id, position`, ...args))
       .map((l) => ({ ...l, summaryHtml: renderMarkdown(l.summary || '') })),
-    projects: q
+    projects: (await q
       .all(
         `SELECT * FROM projects WHERE kind = 'pesquisa' ${onde} ORDER BY person_id, position`,
         ...args,
-      )
+      ))
       .map((p) => ({ ...p, descriptionHtml: renderMarkdown(p.description || '') })),
-    totais: parseJson(getSettings().lattes_totais, {}),
+    totais: parseJson((await getSettings()).lattes_totais, {}),
   });
 });
 
 /* ------------------------------------------------------- orientações   */
 
-router.get('/orientacoes', (req, res) => {
-  const f = filtroPessoa(req);
+router.get('/orientacoes', async (req, res) => {
+  const f = await filtroPessoa(req);
   const tipo = (req.query.tipo || '').trim();
 
   let sql = 'SELECT * FROM mentorships WHERE 1=1';
@@ -448,7 +449,7 @@ router.get('/orientacoes', (req, res) => {
   if (f.id) { sql += ' AND person_id = ?'; args.push(f.id); }
   if (tipo) { sql += ' AND kind = ?'; args.push(tipo); }
   sql += ' ORDER BY year DESC, student';
-  const rows = q.all(sql, ...args);
+  const rows = await q.all(sql, ...args);
 
   const ROTULOS = {
     doutorado: 'Teses de doutorado',
@@ -471,7 +472,7 @@ router.get('/orientacoes', (req, res) => {
     grupos: ordem
       .filter((k) => grupos.has(k))
       .map((k) => ({ kind: k, label: ROTULOS[k], items: grupos.get(k) })),
-    contagens: q.all(
+    contagens: await q.all(
       `SELECT kind, COUNT(*) AS n FROM mentorships ${f.id ? 'WHERE person_id = ?' : ''} GROUP BY kind`,
       ...(f.id ? [f.id] : []),
     ),
@@ -481,26 +482,26 @@ router.get('/orientacoes', (req, res) => {
   });
 });
 
-router.get('/extensao', (req, res) => {
-  const f = filtroPessoa(req);
+router.get('/extensao', async (req, res) => {
+  const f = await filtroPessoa(req);
   const onde = f.id ? 'AND person_id = ?' : '';
   const args = f.id ? [f.id] : [];
 
   res.render('public/extensao', {
     title: 'Extensão e divulgação',
     filtro: f,
-    projects: q
+    projects: (await q
       .all(
         `SELECT * FROM projects WHERE kind NOT IN ('pesquisa','evento') ${onde}
          ORDER BY person_id, position`,
         ...args,
-      )
+      ))
       .map((p) => ({ ...p, descriptionHtml: renderMarkdown(p.description || '') })),
   });
 });
 
-router.get('/publicacoes', (req, res) => {
-  const f = filtroPessoa(req);
+router.get('/publicacoes', async (req, res) => {
+  const f = await filtroPessoa(req);
   const kind = req.query.tipo || '';
 
   let sql = 'SELECT * FROM publications WHERE 1=1';
@@ -508,7 +509,7 @@ router.get('/publicacoes', (req, res) => {
   if (f.id) { sql += ' AND person_id = ?'; args.push(f.id); }
   if (kind) { sql += ' AND kind = ?'; args.push(kind); }
   sql += ' ORDER BY year DESC, position';
-  const rows = q.all(sql, ...args);
+  const rows = await q.all(sql, ...args);
 
   const byDecade = new Map();
   for (const p of rows) {
@@ -523,7 +524,7 @@ router.get('/publicacoes', (req, res) => {
     groups: [...byDecade.entries()],
     total: rows.length,
     kind,
-    kinds: q.all(
+    kinds: await q.all(
       `SELECT kind, COUNT(*) AS n FROM publications ${f.id ? 'WHERE person_id = ?' : ''}
        GROUP BY kind ORDER BY n DESC`,
       ...(f.id ? [f.id] : []),
@@ -533,11 +534,11 @@ router.get('/publicacoes', (req, res) => {
 
 /* -------------------------------------------------------------- contato */
 
-router.get('/contato', (req, res) => {
+router.get('/contato', async (req, res) => {
   res.render('public/contato', { title: 'Contato' });
 });
 
-router.post('/contato', (req, res) => {
+router.post('/contato', async (req, res) => {
   const nome = String(req.body.nome || '').trim().slice(0, 100);
   const email = String(req.body.email || '').trim().slice(0, 150);
   const assunto = String(req.body.assunto || '').trim().slice(0, 150);
@@ -551,7 +552,7 @@ router.post('/contato', (req, res) => {
     return res.redirect(`/contato?erro=${encodeURIComponent('E-mail inválido.')}`);
   }
 
-  q.run(
+  await q.run(
     'INSERT INTO messages (name, email, subject, body) VALUES (?,?,?,?)',
     nome,
     email,
@@ -563,22 +564,22 @@ router.post('/contato', (req, res) => {
 
 /* ----------------------------------------------------------- newsletter */
 
-router.post('/inscrever', (req, res) => {
+router.post('/inscrever', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase().slice(0, 150);
   const back = req.get('referer') || '/';
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return res.redirect(`${back.split('?')[0]}?erro=${encodeURIComponent('E-mail inválido.')}`);
   }
-  q.run('INSERT OR IGNORE INTO subscribers (email) VALUES (?)', email);
+  await q.run('INSERT INTO subscribers (email) VALUES (?) ON CONFLICT (email) DO NOTHING', email);
   res.redirect(`${back.split('?')[0]}?ok=${encodeURIComponent('Inscrição confirmada!')}`);
 });
 
 /* ------------------------------------------------------------ feed/seo  */
 
-router.get('/feed.xml', (req, res) => {
-  const settings = getSettings();
+router.get('/feed.xml', async (req, res) => {
+  const settings = await getSettings();
   const base = `${req.protocol}://${req.get('host')}`;
-  const posts = q.all(`${LIST_SQL} ORDER BY p.published_at DESC LIMIT 20`);
+  const posts = await q.all(`${LIST_SQL} ORDER BY p.published_at DESC LIMIT 20`);
 
   const items = posts
     .map(
@@ -604,11 +605,11 @@ ${items}
 </rss>`);
 });
 
-router.get('/sitemap.xml', (req, res) => {
+router.get('/sitemap.xml', async (req, res) => {
   const base = `${req.protocol}://${req.get('host')}`;
   const urls = ['/', '/blog', '/sobre', '/pesquisa', '/publicacoes', '/orientacoes', '/extensao', '/contato']
-    .concat(listarPessoas().map((p) => `/sobre/${p.slug}`));
-  const posts = q.all(`${LIST_SQL} ORDER BY p.published_at DESC`);
+    .concat((await listarPessoas()).map((p) => `/sobre/${p.slug}`));
+  const posts = await q.all(`${LIST_SQL} ORDER BY p.published_at DESC`);
   const body = [
     ...urls.map((u) => `  <url><loc>${base}${u}</loc></url>`),
     ...posts.map(
@@ -621,7 +622,7 @@ router.get('/sitemap.xml', (req, res) => {
   );
 });
 
-router.get('/robots.txt', (req, res) => {
+router.get('/robots.txt', async (req, res) => {
   const base = `${req.protocol}://${req.get('host')}`;
   res.type('text/plain').send(`User-agent: *\nDisallow: /admin\nSitemap: ${base}/sitemap.xml\n`);
 });

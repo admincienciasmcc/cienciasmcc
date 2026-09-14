@@ -10,7 +10,7 @@
  * comentários nem imagens — apenas marca a autoria dos posts existentes.
  */
 
-const { q, db, setSetting } = require('./db');
+const { q, init, encerrar, setSetting } = require('./db');
 const sonia = require('./lattes/sonia');
 
 /* --------------------------------------------------------- perfis ----- */
@@ -75,16 +75,16 @@ const COLUNAS_PESSOA = [
   'citation_names', 'languages', 'areas', 'nationality', 'position',
 ];
 
-function gravarPessoa(dados) {
-  const existente = q.get('SELECT id FROM people WHERE slug = ?', dados.slug);
+async function gravarPessoa(dados) {
+  const existente = await q.get('SELECT id FROM people WHERE slug = ?', dados.slug);
   const valores = COLUNAS_PESSOA.map((c) => dados[c] ?? '');
   if (existente) {
     const sets = COLUNAS_PESSOA.map((c) => `${c} = ?`).join(', ');
-    q.run(`UPDATE people SET ${sets} WHERE id = ?`, ...valores, existente.id);
+    await q.run(`UPDATE people SET ${sets} WHERE id = ?`, ...valores, existente.id);
     return existente.id;
   }
   const marks = COLUNAS_PESSOA.map(() => '?').join(', ');
-  const info = q.run(
+  const info = await q.run(
     `INSERT INTO people (${COLUNAS_PESSOA.join(', ')}) VALUES (${marks})`,
     ...valores,
   );
@@ -93,11 +93,12 @@ function gravarPessoa(dados) {
 
 /* ------------------------------------------------------------ execução  */
 
-function main() {
+async function main() {
+  await init();
   console.log('\nConfigurando as duas idealizadoras do projeto…\n');
 
-  const idMaria = gravarPessoa(MARIA);
-  const idSonia = gravarPessoa(SONIA);
+  const idMaria = await gravarPessoa(MARIA);
+  const idSonia = await gravarPessoa(SONIA);
   console.log(`  · Maria Cristina dos Santos Sobreira de Sampaio (id ${idMaria})`);
   console.log(`  · Sonia Bonduki (id ${idSonia})\n`);
 
@@ -107,70 +108,68 @@ function main() {
     'mentorships', 'research_lines', 'awards', 'posts',
   ];
   for (const t of TABELAS) {
-    const r = q.run(`UPDATE ${t} SET person_id = ? WHERE person_id IS NULL`, idMaria);
+    const r = await q.run(`UPDATE ${t} SET person_id = ? WHERE person_id IS NULL`, idMaria);
     if (r.changes) console.log(`  · ${t}: ${r.changes} registro(s) atribuídos a Maria Cristina`);
   }
 
   /* Currículo da Sonia — sempre regravado do zero. */
   console.log('');
-  db.exec(`DELETE FROM timeline WHERE person_id = ${idSonia}`);
-  db.exec(`DELETE FROM publications WHERE person_id = ${idSonia}`);
-  db.exec(`DELETE FROM research_lines WHERE person_id = ${idSonia}`);
-  db.exec(`DELETE FROM projects WHERE person_id = ${idSonia}`);
+  await q.run('DELETE FROM timeline       WHERE person_id = ?', idSonia);
+  await q.run('DELETE FROM publications   WHERE person_id = ?', idSonia);
+  await q.run('DELETE FROM research_lines WHERE person_id = ?', idSonia);
+  await q.run('DELETE FROM projects       WHERE person_id = ?', idSonia);
 
-  const stmtTimeline = db.prepare(
-    `INSERT INTO timeline (period, sort_year, title, org, description, kind, person_id)
-     VALUES (?,?,?,?,?,?,?)`,
-  );
+  const SQL_TIMELINE = `INSERT INTO timeline (period, sort_year, title, org, description, kind, person_id)
+     VALUES (?,?,?,?,?,?,?)`;
   for (const t of [...sonia.TRAJETORIA, ...sonia.FORMACAO]) {
-    stmtTimeline.run(t.period, t.sort_year, t.title, t.org, t.description, t.kind, idSonia);
+    await q.run(SQL_TIMELINE, t.period, t.sort_year, t.title, t.org, t.description, t.kind, idSonia);
   }
   console.log(`  · trajetória e formação da Sonia: ${sonia.TRAJETORIA.length + sonia.FORMACAO.length}`);
 
-  const stmtPub = db.prepare(
-    `INSERT INTO publications (year, authors, title, venue, details, citations, kind, highlight, position, person_id)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
-  );
-  sonia.PUBLICACOES.forEach((p, i) => {
-    stmtPub.run(p.year, p.authors, p.title, p.venue, p.details, 0, p.kind, p.highlight ?? 0, i, idSonia);
-  });
+  const SQL_PUB = `INSERT INTO publications (year, authors, title, venue, details, citations, kind, highlight, position, person_id)
+     VALUES (?,?,?,?,?,?,?,?,?,?)`;
+  for (const [i, p] of sonia.PUBLICACOES.entries()) {
+    await q.run(SQL_PUB, p.year, p.authors, p.title, p.venue, p.details, 0, p.kind, p.highlight ?? 0, i, idSonia);
+  }
   console.log(`  · publicações da Sonia: ${sonia.PUBLICACOES.length}`);
 
-  const stmtLinha = db.prepare(
-    `INSERT INTO research_lines (title, summary, keywords, icon, position, person_id)
-     VALUES (?,?,?,?,?,?)`,
-  );
-  sonia.LINHAS.forEach((l, i) => {
+  const SQL_LINHA = `INSERT INTO research_lines (title, summary, keywords, icon, position, person_id)
+     VALUES (?,?,?,?,?,?)`;
+  for (const [i, l] of sonia.LINHAS.entries()) {
     const resumo = l.areas ? `${l.summary}\n\n**Áreas:** ${l.areas}` : l.summary;
-    stmtLinha.run(l.title, resumo, l.keywords, l.icon, i, idSonia);
-  });
+    await q.run(SQL_LINHA, l.title, resumo, l.keywords, l.icon, i, idSonia);
+  }
   console.log(`  · linhas de trabalho da Sonia: ${sonia.LINHAS.length}`);
 
   /* Os eventos viram "projetos" do tipo evento, para aparecerem na página dela. */
-  const stmtProj = db.prepare(
-    `INSERT INTO projects (title, period, role, funder, status, kind, description, position, person_id)
-     VALUES (?,?,?,?,?,?,?,?,?)`,
-  );
-  sonia.EVENTOS.forEach((e, i) => {
-    stmtProj.run(e.title, String(e.year), e.role, '', e.kind, 'evento', e.org || '', i, idSonia);
-  });
+  const SQL_PROJ = `INSERT INTO projects (title, period, role, funder, status, kind, description, position, person_id)
+     VALUES (?,?,?,?,?,?,?,?,?)`;
+  for (const [i, e] of sonia.EVENTOS.entries()) {
+    await q.run(SQL_PROJ, e.title, String(e.year), e.role, '', e.kind, 'evento', e.org || '', i, idSonia);
+  }
   console.log(`  · eventos e congressos da Sonia: ${sonia.EVENTOS.length}`);
 
   /* --------------------------------------------- identidade do site --- */
-  setSetting('site_title', 'Ciência: Mitos, Curiosidades e Conceitos');
-  setSetting('site_tagline', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
-  setSetting(
+  await setSetting('site_title', 'Ciência: Mitos, Curiosidades e Conceitos');
+  await setSetting('site_tagline', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
+  await setSetting(
     'site_description',
     'Ciência: Mitos, Curiosidades e Conceitos é um projeto de divulgação científica ' +
       'de Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki, duas biólogas. Imunologia, animais ' +
       'peçonhentos, Amazônia e ensino de Ciências — separando o que é mito, o que é ' +
       'curiosidade e o que é conceito.',
   );
-  setSetting('owner_name', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
-  setSetting('owner_short', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
-  setSetting('projeto_duplo', '1');
+  await setSetting('owner_name', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
+  await setSetting('owner_short', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
+  await setSetting('projeto_duplo', '1');
 
   console.log('\nPronto. As duas estão no site.\n');
 }
 
-main();
+main()
+  .then(encerrar)
+  .catch(async (err) => {
+    console.error('\nFalhou:', err.message);
+    await encerrar().catch(() => {});
+    process.exit(1);
+  });

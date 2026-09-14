@@ -4,6 +4,7 @@ node_modules/
 # banco de dados: guarda o hash da senha, as sessões e o conteúdo publicado.
 # É recriado com "npm run seed"; nunca deve ir para um repositório público.
 data/*.db
+data/pg/
 data/*.db-shm
 data/*.db-wal
 data/PRIMEIRO-ACESSO.txt
