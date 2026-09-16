@@ -14,7 +14,8 @@
     "lattes": "node src/seed-lattes.js",
     "pessoas": "node src/seed-pessoas.js",
     "fotos": "node src/fotos.js",
-    "instalar": "npm run seed && npm run lattes && npm run pessoas"
+    "instalar": "npm run seed && npm run lattes && npm run pessoas",
+    "estatico": "node src/estatico.js"
   },
   "engines": {
     "node": ">=22.5"

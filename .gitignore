@@ -21,3 +21,9 @@ documentos/
 .DS_Store
 *.log
 npm-debug.log*
+
+# gerados por "npm run estatico" — recriáveis a qualquer momento
+site-estatico/
+cienciasmcc-netlify.zip
+index-completo.html
+TEXTOS-DO-SITE.md
