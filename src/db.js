@@ -26,6 +26,19 @@ try {
   /* sem .env: seguimos com o que estiver no ambiente */
 }
 
+/*
+ * Painéis de hospedagem costumam guardar espaços ou quebras de linha coladas
+ * junto com o valor. Aparamos as pontas de todas as variáveis que usamos.
+ */
+for (const nome of [
+  'DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_BUCKET',
+  'SITE_URL', 'ANTHROPIC_API_KEY', 'CRON_SECRET',
+]) {
+  if (typeof process.env[nome] === 'string') {
+    process.env[nome] = process.env[nome].trim().replace(/^["']|["']$/g, '');
+  }
+}
+
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads');
 
