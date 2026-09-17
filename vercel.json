@@ -8,6 +8,10 @@
     "api/cron.js": {
       "maxDuration": 60,
       "includeFiles": "src/**"
+    },
+    "api/saude.js": {
+      "maxDuration": 30,
+      "includeFiles": "{views,public,src}/**"
     }
   },
   "crons": [
@@ -20,6 +24,10 @@
     {
       "source": "/api/cron",
       "destination": "/api/cron"
+    },
+    {
+      "source": "/api/saude",
+      "destination": "/api/saude"
     },
     {
       "source": "/(.*)",

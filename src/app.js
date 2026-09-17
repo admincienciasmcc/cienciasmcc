@@ -86,11 +86,22 @@ function criarApp() {
   });
 
   app.use((err, req, res, _next) => {
-    console.error(err);
-    res.status(500).render('public/404', {
-      title: 'Algo deu errado',
-      message: 'Ocorreu um erro inesperado. Tente novamente em instantes.',
-    });
+    console.error('[erro]', req.method, req.originalUrl, err);
+    if (res.headersSent) return;
+    res.status(500).render(
+      'public/404',
+      {
+        title: 'Algo deu errado',
+        message: 'Ocorreu um erro inesperado. Tente novamente em instantes.',
+      },
+      (erroRender, html) => {
+        if (erroRender) {
+          console.error('[erro] a página de erro também falhou:', erroRender.message);
+          return res.type('text').send('Ocorreu um erro inesperado. Tente novamente em instantes.');
+        }
+        res.send(html);
+      },
+    );
   });
 
   return app;
