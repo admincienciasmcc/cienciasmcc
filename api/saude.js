@@ -31,6 +31,16 @@ module.exports = async (req, res) => {
     variaveis: {
       DATABASE_URL: Boolean(url),
       DATABASE_URL_porta_6543: /:6543\//.test(url),
+      DATABASE_URL_formato: url ? {
+        tamanho: url.length,
+        comeca_com_postgresql: /^postgres(ql)?:\/\//.test(url),
+        tem_aspas: /["'`]/.test(url),
+        tem_espaco_ou_quebra: /\s/.test(url),
+        tem_colchetes: /[\[\]]/.test(url),
+        tem_nome_da_variavel: /DATABASE_URL/i.test(url),
+        inicio: url.slice(0, 11).replace(/[^a-z:/]/gi, '·'),
+        host_pooler_sa: /pooler\.supabase\.com/.test(url),
+      } : null,
       SUPABASE_URL: Boolean(process.env.SUPABASE_URL),
       SUPABASE_SERVICE_KEY: Boolean(process.env.SUPABASE_SERVICE_KEY),
       SUPABASE_BUCKET: process.env.SUPABASE_BUCKET || null,
