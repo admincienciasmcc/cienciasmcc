@@ -81,7 +81,8 @@ async function apagar(url) {
   }
   if (sb && url.includes(`/${BUCKET}/`)) {
     const nome = decodeURIComponent(url.split(`/${BUCKET}/`).pop().split('?')[0]);
-    await sb.storage.from(BUCKET).remove([nome]).catch(() => {});
+    const { error } = await sb.storage.from(BUCKET).remove([nome]);
+    if (error) console.error(`[storage] não foi possível apagar ${nome}:`, error.message);
   }
 }
 
