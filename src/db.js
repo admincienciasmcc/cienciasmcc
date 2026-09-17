@@ -427,7 +427,8 @@ CREATE INDEX IF NOT EXISTS idx_posts_busca    ON posts USING gin(search_tsv);
 function init() {
   if (!pronto) {
     pronto = (async () => {
-      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+      // no Vercel o disco é somente leitura: a pasta já vem no pacote ou não é usada
+      try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch { /* segue */ }
       await conectar().exec(ESQUEMA);
     })().catch((e) => {
       pronto = null; // permite nova tentativa numa próxima requisição

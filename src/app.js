@@ -45,6 +45,20 @@ function criarApp() {
     next();
   }));
 
+  /*
+   * Posts agendados: no plano Hobby do Vercel a tarefa agendada só roda uma
+   * vez por dia. Para não atrasar, cada instância confere a fila ao receber
+   * visitas, no máximo a cada 5 minutos, sem segurar a resposta.
+   */
+  let ultimaConferencia = 0;
+  app.use((req, res, next) => {
+    if (Date.now() - ultimaConferencia > 5 * 60_000) {
+      ultimaConferencia = Date.now();
+      publicarAgendados().catch((e) => console.error('[agenda]', e.message));
+    }
+    next();
+  });
+
   app.use(aguardar(attachUser));
 
   /* ---------------------------------------- variáveis de toda view --- */

@@ -54,8 +54,8 @@ npm run instalar  # cria as tabelas e carrega o conteúdo
 Variables*, repita as mesmas variáveis do `.env` (`DATABASE_URL`,
 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_BUCKET` e, se quiser,
 `SITE_URL`, `ANTHROPIC_API_KEY` e `CRON_SECRET`). O `vercel.json` já cuida
-do resto: manda todo o tráfego para `api/index.js` e agenda `/api/cron` a
-cada 15 minutos para publicar os posts programados.
+do resto: manda todo o tráfego para `api/index.js` e agenda `/api/cron` uma vez por dia (limite do plano Hobby); além disso, o
+site confere os posts programados a cada visita, no máximo a cada 5 minutos.
 
 > A chave **service_role** ignora as regras de acesso do Supabase. Ela só
 > pode existir no servidor — nunca no navegador nem no repositório.
