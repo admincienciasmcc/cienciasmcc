@@ -148,8 +148,8 @@
 <section class="section">
   <div class="wrap">
     <div class="callout">
-      <p class="eyebrow" style="justify-content:center">Currículos completos</p>
-      <h2 style="margin-bottom:.5rem">Tudo aqui vem da Plataforma Lattes</h2>
+      <p class="eyebrow" style="justify-content:center">De onde vêm estes dados</p>
+      <h2 style="margin-bottom:.5rem">Tudo aqui vem dos currículos das duas</h2>
       <p class="muted" style="max-width:62ch;margin:0 auto 1.5rem">
         Publicações, projetos, orientações, disciplinas e trajetória foram transcritos dos
         currículos Lattes das duas.
@@ -158,6 +158,10 @@
         <% if (p.lattes_url) { %>
           <a class="btn btn-ghost" href="<%= p.lattes_url %>" target="_blank" rel="noopener">
             Lattes de <%= p.short_name.split(' ')[0] %> ↗
+          </a>
+        <% } else if (p.linkedin_url) { %>
+          <a class="btn btn-ghost" href="<%= p.linkedin_url %>" target="_blank" rel="noopener">
+            LinkedIn de <%= p.short_name.split(' ')[0] %> ↗
           </a>
         <% } %>
       <% }) %>

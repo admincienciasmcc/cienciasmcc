@@ -19,10 +19,12 @@ const PERFIL = {
   portrait: '/uploads/sonia-bonduki-retrato.jpg',
   initials: 'SB',
   accent: '#0f766e',
-  lattes_id: '3738348980369937',
-  lattes_url: 'http://lattes.cnpq.br/3738348980369937',
-  lattes_updated: '25/04/2013',
+  // a pedido dela, o perfil aponta para o LinkedIn em vez do Lattes
+  lattes_id: '',
+  lattes_url: '',
+  lattes_updated: '',
   orcid_url: '',
+  linkedin_url: 'https://www.linkedin.com/in/sonia-bonduki-76a12764/',
   citation_names: 'BONDUKI, S.',
   nationality: 'Brasil',
   languages: [

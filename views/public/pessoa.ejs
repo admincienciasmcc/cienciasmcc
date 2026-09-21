@@ -20,6 +20,9 @@
         <% if (pessoa.orcid_url) { %>
           <a class="btn btn-ghost" href="<%= pessoa.orcid_url %>" target="_blank" rel="noopener">ORCID ↗</a>
         <% } %>
+        <% if (pessoa.linkedin_url) { %>
+          <a class="btn btn-ghost" href="<%= pessoa.linkedin_url %>" target="_blank" rel="noopener">LinkedIn ↗</a>
+        <% } %>
         <% if (contagens.posts) { %>
           <a class="btn btn-primary" href="/blog?quem=<%= pessoa.slug %>">Textos no blog (<%= contagens.posts %>)</a>
         <% } %>
@@ -50,6 +53,12 @@
           <% if (pessoa.orcid_url) { %>
             <dt>ORCID</dt>
             <dd><a href="<%= pessoa.orcid_url %>" target="_blank" rel="noopener"><%= pessoa.orcid_url.replace('https://orcid.org/', '') %></a></dd>
+          <% } %>
+          <% if (pessoa.linkedin_url) { %>
+            <dt>LinkedIn</dt>
+            <dd><a href="<%= pessoa.linkedin_url %>" target="_blank" rel="noopener">
+              <%= pessoa.linkedin_url.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, '').replace(/\/$/, '') %>
+            </a></dd>
           <% } %>
           <% if (pessoa.lattes_updated) { %>
             <dt>Currículo atualizado em</dt><dd><%= pessoa.lattes_updated %></dd>

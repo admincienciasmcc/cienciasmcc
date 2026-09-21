@@ -12,7 +12,7 @@
         <% if (post) { %>
           Criado em <%= fmt(post.created_at) %> · última alteração <%= fmt(post.updated_at) %>
         <% } else { %>
-          Escreva em Markdown. O painel à direita analisa o texto enquanto você digita.
+          Escreva em Markdown. A análise do texto acompanha o que você digita.
         <% } %>
       </p>
     </div>
@@ -33,9 +33,9 @@
                value="<%= post ? post.subtitle : '' %>"
                style="border:0;background:transparent;padding:.2rem 0;font-size:1rem;color:var(--a-ink-2)">
 
-        <div class="muted small" style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem">
-          <span>Endereço: /blog/<input type="text" name="slug" id="slug" value="<%= post ? post.slug : '' %>"
-            style="display:inline;width:auto;min-width:220px;padding:.15rem .4rem;font-size:.78rem"></span>
+        <div class="muted small linha-slug">
+          <span class="campo-slug">Endereço: /blog/<input type="text" name="slug" id="slug"
+            value="<%= post ? post.slug : '' %>"></span>
           <span id="title-len"></span>
         </div>
       </div>
@@ -315,6 +315,15 @@
         <% } %>
       </div>
     </div>
+  </div>
+
+  <!-- barra fixa no rodapé, só no celular: salvar sem precisar rolar -->
+  <div class="save-bar" aria-hidden="false">
+    <span class="save-bar-info">
+      <span id="word-count-mobile">0 palavras</span>
+    </span>
+    <button class="btn btn-ghost btn-sm" type="button" id="toggle-preview-mobile">👁 Ver</button>
+    <button class="btn btn-primary" type="submit">Salvar</button>
   </div>
 </form>
 

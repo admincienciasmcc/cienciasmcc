@@ -53,7 +53,15 @@ function conectar() {
   const url = process.env.DATABASE_URL;
 
   if (url) {
-    const { Pool } = require('pg');
+    const driver = require('pg');
+    /*
+     * COUNT() e somas voltam como int8, que o driver entrega em texto para não
+     * perder precisão. Nada aqui chega perto do limite do JavaScript, e texto
+     * quebraria as contas (0 + "5" = "05"). Convertemos para número.
+     */
+    driver.types.setTypeParser(20, (v) => (v === null ? null : Number(v)));
+    driver.types.setTypeParser(1700, (v) => (v === null ? null : Number(v)));
+    const { Pool } = driver;
     // Em ambiente serverless cada instância abre poucas conexões; o pooler do
     // Supabase (porta 6543) cuida do resto.
     const pg = new Pool({
@@ -89,7 +97,13 @@ function conectar() {
     async query(sql, params) {
       const db = await lite;
       const r = await db.query(sql, params);
-      return { rows: r.rows || [], rowCount: r.affectedRows ?? (r.rows ? r.rows.length : 0) };
+      const rows = (r.rows || []).map((linha) => {
+        for (const k of Object.keys(linha)) {
+          if (typeof linha[k] === 'bigint') linha[k] = Number(linha[k]);
+        }
+        return linha;
+      });
+      return { rows, rowCount: r.affectedRows ?? rows.length };
     },
     async exec(sql) {
       const db = await lite;
@@ -228,6 +242,7 @@ CREATE TABLE IF NOT EXISTS people (
   lattes_url     TEXT DEFAULT '',
   lattes_updated TEXT DEFAULT '',
   orcid_url      TEXT DEFAULT '',
+  linkedin_url   TEXT DEFAULT '',
   citation_names TEXT DEFAULT '',
   languages      TEXT DEFAULT '[]',
   areas          TEXT DEFAULT '[]',
@@ -429,6 +444,9 @@ CREATE TABLE IF NOT EXISTS activity_log (
   detail     TEXT DEFAULT '',
   created_at TEXT NOT NULL DEFAULT ${AGORA}
 );
+
+-- acrescentada depois da primeira versão: bancos já criados também recebem
+ALTER TABLE people ADD COLUMN IF NOT EXISTS linkedin_url TEXT DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_posts_status   ON posts(status, published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post  ON comments(post_id, status);

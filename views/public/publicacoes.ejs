@@ -6,10 +6,10 @@
     <p class="eyebrow">Produção científica</p>
     <h1>Publicações</h1>
     <p class="hero-lead">
-      Uma seleção da produção catalogada no currículo Lattes: artigos em periódicos,
-      livros e capítulos. A lista completa, com resumos expandidos e trabalhos em anais,
-      está no Lattes de cada uma —
-      <% pessoas.forEach((p, i) => { %><% if (p.lattes_url) { %><a href="<%= p.lattes_url %>" target="_blank" rel="noopener"><%= p.short_name.split(' ')[0] %></a><%= i < pessoas.length - 1 ? ' · ' : '' %><% } %><% }) %>.
+      Artigos em periódicos, livros e capítulos transcritos dos currículos das duas.
+      A lista completa, com resumos expandidos e trabalhos em anais, está na Plataforma
+      Lattes<% const comLattes = pessoas.filter(p => p.lattes_url); %><% if (comLattes.length) { %>
+      — <% comLattes.forEach((p, i) => { %><a href="<%= p.lattes_url %>" target="_blank" rel="noopener"><%= p.short_name %></a><%= i < comLattes.length - 1 ? ' · ' : '' %><% }) %><% } %>.
     </p>
 
     <%- include('../partials/filtro-pessoa', { base: '/publicacoes', filtro, extra: kind ? 'tipo=' + kind : '' }) %>

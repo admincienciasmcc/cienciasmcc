@@ -153,6 +153,11 @@
           data.stats.wordCount + ' palavras · ' + data.stats.readingTime +
           ' min · legibilidade ' + data.stats.level;
         $('word-count').textContent = data.stats.wordCount + ' palavras';
+        var contagemCelular = $('word-count-mobile');
+        if (contagemCelular) {
+          contagemCelular.textContent =
+            data.stats.wordCount + ' palavras · ' + data.stats.readingTime + ' min';
+        }
         if (preview && !preview.hidden) preview.innerHTML = data.html;
       })
       .catch(function () { /* silencioso: a análise é auxiliar */ });
@@ -272,6 +277,44 @@
       this.textContent = '✏️ Voltar a escrever';
     }
   });
+
+  var previewCelular = $('toggle-preview-mobile');
+  if (previewCelular) {
+    previewCelular.addEventListener('click', function () {
+      $('toggle-preview').click();
+      this.textContent = preview.hidden ? '👁 Ver' : '✏️ Escrever';
+      if (!preview.hidden) preview.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }
+
+  /*
+   * No celular a coluna de análise fica depois do texto e empurra tudo para
+   * baixo. Cada painel vira uma seção que abre e fecha; "Publicação" continua
+   * aberta, porque é onde ficam a autora, a situação e a data.
+   */
+  function recolherPaineisNoCelular() {
+    if (!window.matchMedia('(max-width: 820px)').matches) return;
+    var lateral = document.querySelector('.side-panel');
+    if (!lateral || lateral.dataset.recolhido) return;
+    lateral.dataset.recolhido = '1';
+
+    Array.prototype.forEach.call(lateral.querySelectorAll(':scope > .panel'), function (painel, i) {
+      var titulo = painel.querySelector('h2, h3');
+      if (!titulo) return;
+      var detalhes = document.createElement('details');
+      detalhes.className = painel.className;
+      if (i === 0) detalhes.open = true;
+      var resumo = document.createElement('summary');
+      resumo.textContent = titulo.textContent.trim();
+      var cabecalho = titulo.closest('.panel-head') || titulo;
+      cabecalho.remove();
+      detalhes.appendChild(resumo);
+      while (painel.firstChild) detalhes.appendChild(painel.firstChild);
+      painel.replaceWith(detalhes);
+    });
+  }
+  recolherPaineisNoCelular();
+  window.addEventListener('resize', recolherPaineisNoCelular);
 
   /* ------------------------------------------ biblioteca e galeria de fotos */
 

@@ -71,7 +71,7 @@ const SONIA = {
 
 const COLUNAS_PESSOA = [
   'slug', 'name', 'short_name', 'role', 'tagline', 'bio', 'portrait', 'initials',
-  'accent', 'lattes_id', 'lattes_url', 'lattes_updated', 'orcid_url',
+  'accent', 'lattes_id', 'lattes_url', 'lattes_updated', 'orcid_url', 'linkedin_url',
   'citation_names', 'languages', 'areas', 'nationality', 'position',
 ];
 

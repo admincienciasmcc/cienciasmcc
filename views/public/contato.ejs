@@ -33,6 +33,7 @@
             <strong><%= p.short_name %></strong><br>
             <% if (p.lattes_url) { %><a href="<%= p.lattes_url %>" target="_blank" rel="noopener">Lattes</a><% } %>
             <% if (p.orcid_url) { %> · <a href="<%= p.orcid_url %>" target="_blank" rel="noopener">ORCID</a><% } %>
+            <% if (p.linkedin_url) { %> · <a href="<%= p.linkedin_url %>" target="_blank" rel="noopener">LinkedIn</a><% } %>
             · <a href="/sobre/<%= p.slug %>">perfil no site</a>
           </p>
         <% }) %>
