@@ -844,9 +844,11 @@ const LIVROS = [
     year: 2002,
     authors: 'DOS-SANTOS, M. C.; TOPAN, C. S. O.; LIMA, E. K. R.',
     title: 'Lixo: Curiosidades e Conceitos',
-    venue: 'Manaus: Editora da Universidade Federal do Amazonas',
+    venue: 'Manaus: EDUA — Editora da Universidade Federal do Amazonas',
     details: '150 p.',
     kind: 'livro',
+    image: '/uploads/livro-lixo-curiosidades-e-conceitos.jpg',
+    highlight: 1,
   },
   {
     year: 1996,
@@ -855,6 +857,7 @@ const LIVROS = [
     venue: 'Manaus: ABEU — Associação Brasileira das Editoras Universitárias',
     details: '64 p.',
     kind: 'livro',
+    image: '/uploads/livro-serpentes-de-interesse-medico-da-amazonia.jpg',
     highlight: 1,
   },
 ];
@@ -890,9 +893,10 @@ const CAPITULOS = [
     year: 2009,
     authors: 'DOS-SANTOS, M. C.',
     title: 'Serpentes Peçonhentas e Ofidismo no Amazonas',
-    venue: 'In: Animais Peçonhentos no Brasil. 2. ed. São Paulo: Sarvier',
-    details: 'Organizadores: João Luiz Costa Cardoso, Francisco Oscar de Siqueira França, Fan Hui Wen, Ceila Maria Sant’Ana Málaque & Vidal Haddad Jr.',
+    venue: 'In: Animais Peçonhentos no Brasil: biologia, clínica e terapêutica dos acidentes. 2. ed. São Paulo: Sarvier',
+    details: 'cap. 11, a partir da p. 132 · Organizadores: João Luiz Costa Cardoso, Francisco Oscar de Siqueira França, Fan Hui Wen, Ceila Maria Sant’Ana Málaque e Vidal Haddad Jr.',
     kind: 'capitulo',
+    image: '/uploads/livro-animais-peconhentos-no-brasil-2ed.jpg',
     highlight: 1,
   },
   {

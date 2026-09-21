@@ -361,6 +361,7 @@ CREATE TABLE IF NOT EXISTS publications (
   kind      TEXT DEFAULT 'artigo',
   highlight INTEGER DEFAULT 0,
   position  INTEGER DEFAULT 0,
+  image     TEXT DEFAULT '',
   person_id INTEGER REFERENCES people(id) ON DELETE SET NULL
 );
 
@@ -447,6 +448,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
 
 -- acrescentada depois da primeira versão: bancos já criados também recebem
 ALTER TABLE people ADD COLUMN IF NOT EXISTS linkedin_url TEXT DEFAULT '';
+ALTER TABLE publications ADD COLUMN IF NOT EXISTS image TEXT DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_posts_status   ON posts(status, published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post  ON comments(post_id, status);

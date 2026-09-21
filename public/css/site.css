@@ -938,3 +938,22 @@ textarea { min-height: 130px; resize: vertical; line-height: 1.6; }
 
 /* ícone grande das páginas vazias (404) */
 .empty .big { font-size: 3.5rem; line-height: 1; margin-bottom: 1rem; }
+
+/* ------------------------------------------------ capas de livros ------- */
+
+.capas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.75rem; }
+
+.capa-card {
+  display: grid; grid-template-columns: 130px 1fr; gap: 1.25rem;
+  background: var(--card); border-radius: var(--radius); padding: 1.25rem;
+  box-shadow: var(--shadow);
+}
+.capa-img { border-radius: var(--radius-sm); overflow: hidden; background: var(--paper-2); align-self: start; }
+.capa-img img { width: 100%; height: auto; display: block; }
+.capa-info h3 { font-size: 1.02rem; margin: .6rem 0 .35rem; }
+.capa-info p { margin: 0 0 .3rem; }
+.capa-info .chip { font-size: .66rem; }
+
+@media (max-width: 520px) {
+  .capa-card { grid-template-columns: 96px 1fr; gap: 1rem; padding: 1rem; }
+}

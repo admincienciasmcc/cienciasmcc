@@ -16,6 +16,39 @@
   </div>
 </section>
 
+<% if (capas.length) { %>
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Livros e capítulos</p>
+        <h2>As obras impressas</h2>
+        <p class="muted" style="max-width:60ch">
+          Capas fotografadas dos próprios exemplares.
+        </p>
+      </div>
+    </div>
+
+    <div class="capas-grid">
+      <% capas.forEach(o => { %>
+        <article class="capa-card">
+          <div class="capa-img">
+            <img src="<%= o.image %>" alt="Capa de <%= o.title %>" loading="lazy">
+          </div>
+          <div class="capa-info">
+            <span class="chip chip-plain"><%= o.kind === 'livro' ? 'Livro' : 'Capítulo' %> · <%= o.year %></span>
+            <h3><%= o.title %></h3>
+            <p class="small muted"><%= o.venue %></p>
+            <% if (o.details) { %><p class="small muted"><%= o.details %></p><% } %>
+            <p class="small" style="margin:0"><%= o.authors %></p>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<% } %>
+
 <section class="section">
   <div class="wrap">
     <div class="filters">

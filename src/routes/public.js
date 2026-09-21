@@ -531,6 +531,12 @@ router.get('/publicacoes', async (req, res) => {
   res.render('public/publicacoes', {
     title: 'Publicações',
     filtro: f,
+    // obras com capa fotografada: viram destaque no topo da página
+    capas: await q.all(
+      `SELECT * FROM publications WHERE image <> ''
+        ${f.id ? 'AND person_id = ?' : ''} ORDER BY year DESC`,
+      ...(f.id ? [f.id] : []),
+    ),
     groups: [...byDecade.entries()],
     total: rows.length,
     kind,

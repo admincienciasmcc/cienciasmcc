@@ -50,7 +50,7 @@ async function main() {
   ];
   await repovoar('publications', publicacoes, [
     'year', 'authors', 'title', 'venue', 'details', 'doi', 'url',
-    'citations', 'kind', 'highlight', 'position',
+    'citations', 'kind', 'highlight', 'position', 'image',
   ]);
 
   /* --------------------------------------------------------- projetos */
