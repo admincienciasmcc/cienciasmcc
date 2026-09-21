@@ -278,6 +278,22 @@
     }
   });
 
+  /*
+   * Vindo de uma sugestão de pauta (/admin/posts/novo?titulo=…), o título já
+   * chega escrito: é só continuar no corpo do texto.
+   */
+  (function tituloVindoDaSugestao() {
+    var sugerido = new URLSearchParams(location.search).get('titulo');
+    if (!sugerido || title.value.trim()) return;
+    title.value = sugerido.slice(0, 160);
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    if (!window.matchMedia('(max-width: 820px)').matches) body.focus();
+  })();
+
+  /* no editor a barra de salvar já ocupa o rodapé: o atalho flutuante sai */
+  var atalho = document.querySelector('[data-fab]');
+  if (atalho && document.querySelector('.save-bar')) atalho.remove();
+
   var previewCelular = $('toggle-preview-mobile');
   if (previewCelular) {
     previewCelular.addEventListener('click', function () {

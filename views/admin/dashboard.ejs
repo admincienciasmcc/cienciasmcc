@@ -57,7 +57,7 @@
       </div>
       <% if (recentPosts.length) { %>
         <table class="list">
-          <thead><tr><th>Título</th><th>Situação</th><th>Leituras</th><th></th></tr></thead>
+          <thead><tr><th>Título</th><th>Situação</th><th class="col-extra">Leituras</th><th></th></tr></thead>
           <tbody>
           <% recentPosts.forEach(p => { %>
             <tr>
@@ -70,7 +70,7 @@
                 <% } else if (p.status === 'scheduled') { %><span class="tag tag-blue">agendado</span>
                 <% } else { %><span class="tag tag-amber">rascunho</span><% } %>
               </td>
-              <td><%= p.views %></td>
+              <td class="col-extra"><%= p.views %></td>
               <td style="text-align:right">
                 <% if (p.status === 'published') { %>
                   <a class="btn btn-ghost btn-sm" href="/blog/<%= p.slug %>" target="_blank">ver</a>
@@ -128,14 +128,15 @@
     <div class="panel">
       <h3>Sugestões de pauta</h3>
       <p class="muted small">Geradas a partir do que você já publicou.</p>
+      <p class="muted small" style="margin-top:-.4rem">Toque numa ideia para abrir o editor com o título pronto.</p>
       <% ideas.forEach(i => { %>
-        <div class="idea">
+        <a class="idea" href="/admin/posts/novo?titulo=<%= encodeURIComponent(i.text) %>">
           <span>💡</span>
           <div>
             <div class="k"><%= i.kind %></div>
             <%= i.text %>
           </div>
-        </div>
+        </a>
       <% }) %>
     </div>
 
