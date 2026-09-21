@@ -1,4 +1,4 @@
-# Ciência: Mitos, Curiosidades e Conceitos
+# Sob a luz da ciência
 
 Site e blog do projeto de divulgação científica de **Maria Cristina dos Santos Sobreira de Sampaio** e
 **Sonia Bonduki**. Duas autoras, com painel administrativo próprio. Não depende de
@@ -77,7 +77,7 @@ Postgres (Supabase) e o Storage.
 | Início | `/` | Apresentação, destaques, números da carreira e linhas de pesquisa |
 | Blog | `/blog` | Lista com busca, filtro por categoria e por assunto |
 | Post | `/blog/<endereço>` | Texto, galeria de fotos, índice lateral, fonte citada e comentários |
-| Quem somos | `/sobre` | As duas, lado a lado, o que significam as três palavras do nome |
+| Quem somos | `/sobre` | As duas, lado a lado, e as três maneiras de escrever do projeto |
 | Perfil | `/sobre/<pessoa>` | Ficha Lattes, formação, atuação, gestão, docência, prêmios |
 | Pesquisa | `/pesquisa` | Linhas de pesquisa e atuação, agrupadas por autora |
 | Publicações | `/publicacoes` | Artigos, livros e capítulos, agrupados por década |

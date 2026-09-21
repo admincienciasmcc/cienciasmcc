@@ -533,10 +533,10 @@ async function searchPosts(termo, limite = 200) {
 /* --------------------------------------------------------------- settings */
 
 const DEFAULT_SETTINGS = {
-  site_title: 'Ciência: Mitos, Curiosidades e Conceitos',
+  site_title: 'Sob a luz da ciência',
   site_tagline: 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki',
   site_description:
-    'Ciência: Mitos, Curiosidades e Conceitos é um projeto de divulgação científica de '
+    'Sob a luz da ciência é um projeto de divulgação científica de '
     + 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki, duas biólogas. '
     + 'Imunologia, animais peçonhentos, Amazônia e ensino de Ciências.',
   owner_name: 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki',

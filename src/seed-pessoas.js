@@ -150,11 +150,11 @@ async function main() {
   console.log(`  · eventos e congressos da Sonia: ${sonia.EVENTOS.length}`);
 
   /* --------------------------------------------- identidade do site --- */
-  await setSetting('site_title', 'Ciência: Mitos, Curiosidades e Conceitos');
+  await setSetting('site_title', 'Sob a luz da ciência');
   await setSetting('site_tagline', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
   await setSetting(
     'site_description',
-    'Ciência: Mitos, Curiosidades e Conceitos é um projeto de divulgação científica ' +
+    'Sob a luz da ciência é um projeto de divulgação científica ' +
       'de Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki, duas biólogas. Imunologia, animais ' +
       'peçonhentos, Amazônia e ensino de Ciências — separando o que é mito, o que é ' +
       'curiosidade e o que é conceito.',
