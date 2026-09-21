@@ -140,7 +140,7 @@ async function main() {
 
   const fila = [
     '/', '/blog', '/sobre', '/pesquisa', '/publicacoes', '/orientacoes',
-    '/extensao', '/contato', '/feed.xml', '/sitemap.xml', '/robots.txt',
+    '/extensao', '/recordacoes', '/contato', '/feed.xml', '/sitemap.xml', '/robots.txt',
     ...posts.map((p) => `/blog/${p.slug}`),
     ...pessoas.map((p) => `/sobre/${p.slug}`),
     ...pessoas.map((p) => `/blog?quem=${p.slug}`),

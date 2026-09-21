@@ -4,7 +4,7 @@
       <span class="brand-duo" aria-hidden="true">
         <% pessoas.forEach(p => { %>
           <span class="brand-face" style="--accent: <%= p.accent %>">
-            <% if (p.portrait) { %><img src="<%= p.portrait %>" alt=""><% } else { %><%= p.initials %><% } %>
+            <% if (p.portrait) { %><img src="<%= p.portrait %>" alt="" width="42" height="42" decoding="async"><% } else { %><%= p.initials %><% } %>
           </span>
         <% }) %>
       </span>
@@ -25,6 +25,7 @@
       <a href="/publicacoes" class="<%= path === '/publicacoes' ? 'is-active' : '' %>">Publicações</a>
       <a href="/orientacoes" class="<%= path === '/orientacoes' ? 'is-active' : '' %>">Orientações</a>
       <a href="/extensao" class="<%= path === '/extensao' ? 'is-active' : '' %>">Extensão</a>
+      <a href="/recordacoes" class="<%= path === '/recordacoes' ? 'is-active' : '' %>">Recordações</a>
       <a href="/contato" class="<%= path === '/contato' ? 'is-active' : '' %>">Contato</a>
     </nav>
   </div>

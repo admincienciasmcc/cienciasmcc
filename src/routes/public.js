@@ -500,6 +500,16 @@ router.get('/extensao', async (req, res) => {
   });
 });
 
+router.get('/recordacoes', (req, res) => {
+  const { ALBUNS, total } = require('../recordacoes');
+  res.render('public/recordacoes', {
+    title: 'Recordações',
+    metaDescription: 'Álbum de recordações: o laboratório, as viagens de campo, os colegas e a Amazônia de perto.',
+    albuns: ALBUNS,
+    total,
+  });
+});
+
 router.get('/publicacoes', async (req, res) => {
   const f = await filtroPessoa(req);
   const kind = req.query.tipo || '';
@@ -607,7 +617,7 @@ ${items}
 
 router.get('/sitemap.xml', async (req, res) => {
   const base = `${req.protocol}://${req.get('host')}`;
-  const urls = ['/', '/blog', '/sobre', '/pesquisa', '/publicacoes', '/orientacoes', '/extensao', '/contato']
+  const urls = ['/', '/blog', '/sobre', '/pesquisa', '/publicacoes', '/orientacoes', '/extensao', '/recordacoes', '/contato']
     .concat((await listarPessoas()).map((p) => `/sobre/${p.slug}`));
   const posts = await q.all(`${LIST_SQL} ORDER BY p.published_at DESC`);
   const body = [

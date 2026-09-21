@@ -7,11 +7,13 @@
   var nav = document.getElementById('nav-principal');
   if (toggle && nav) {
     var icon = toggle.querySelector('[data-nav-icon]');
+    var label = toggle.querySelector('.sr-only');
     var setOpen = function (open) {
       nav.classList.toggle('is-open', open);
       document.body.classList.toggle('nav-open', open);
       toggle.setAttribute('aria-expanded', String(open));
       if (icon) icon.textContent = open ? '\u00d7' : '\u2630';
+      if (label) label.textContent = open ? 'Fechar menu' : 'Abrir menu';
     };
 
     toggle.addEventListener('click', function () {
@@ -28,6 +30,62 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && nav.classList.contains('is-open')) setOpen(false);
     });
+
+    // ao girar o aparelho ou alargar a janela, a gaveta deixa de existir
+    var desktop = window.matchMedia('(min-width: 1201px)');
+    var aoMudar = function (e) { if (e.matches) setOpen(false); };
+    if (desktop.addEventListener) desktop.addEventListener('change', aoMudar);
+    else if (desktop.addListener) desktop.addListener(aoMudar);
+  }
+
+  // recordações: foto ampliada ao tocar, com setas, teclado e deslize
+  var ampliada = document.querySelector('[data-ampliada]');
+  var fotos = Array.prototype.slice.call(document.querySelectorAll('[data-ampliar]'));
+  if (ampliada && fotos.length && typeof ampliada.showModal === 'function') {
+    var grande = ampliada.querySelector('[data-ampliada-img]');
+    var legenda = ampliada.querySelector('[data-ampliada-legenda]');
+    var atual = 0;
+    var mostrar = function (i) {
+      atual = (i + fotos.length) % fotos.length;
+      var link = fotos[atual];
+      grande.src = link.href;
+      grande.alt = link.querySelector('img').alt;
+      legenda.textContent = link.dataset.legenda || '';
+    };
+
+    fotos.forEach(function (link, i) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        mostrar(i);
+        ampliada.showModal();
+      });
+    });
+    ampliada.querySelector('[data-ampliada-fechar]').addEventListener('click', function () {
+      ampliada.close();
+    });
+    ampliada.querySelectorAll('[data-ampliada-passo]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        mostrar(atual + Number(btn.dataset.ampliadaPasso));
+      });
+    });
+    // toque fora da foto fecha
+    ampliada.addEventListener('click', function (e) {
+      if (e.target === ampliada || e.target.tagName === 'FIGURE') ampliada.close();
+    });
+    ampliada.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') mostrar(atual + 1);
+      if (e.key === 'ArrowLeft') mostrar(atual - 1);
+    });
+    var inicioX = null;
+    ampliada.addEventListener('touchstart', function (e) {
+      inicioX = e.touches.length === 1 ? e.touches[0].clientX : null;
+    }, { passive: true });
+    ampliada.addEventListener('touchend', function (e) {
+      if (inicioX === null) return;
+      var dx = e.changedTouches[0].clientX - inicioX;
+      if (Math.abs(dx) > 50) mostrar(atual + (dx < 0 ? 1 : -1));
+      inicioX = null;
+    }, { passive: true });
   }
 
   // marca o horário de abertura do formulário (usado contra robôs)

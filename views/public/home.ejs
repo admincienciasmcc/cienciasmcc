@@ -24,7 +24,7 @@
       <article class="duo-card" style="--accent: <%= p.accent %>">
         <a class="duo-portrait" href="/sobre/<%= p.slug %>">
           <% if (p.portrait) { %>
-            <img src="<%= p.portrait %>" alt="Retrato de <%= p.short_name %>">
+            <img src="<%= p.portrait %>" alt="Retrato de <%= p.short_name %>" decoding="async">
           <% } else { %><span class="portrait-fallback"><%= p.initials %></span><% } %>
         </a>
         <div class="duo-body">

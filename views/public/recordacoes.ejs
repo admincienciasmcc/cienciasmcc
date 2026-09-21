@@ -1,0 +1,51 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Álbum</p>
+    <h1>Recordações</h1>
+    <p class="hero-lead" style="max-width:60ch">
+      Ciência também é feita de gente, de viagem e de paisagem. Aqui ficam <%= total %> fotos
+      guardadas ao longo do caminho: a bancada, os colegas, as idas a campo e a Amazônia de perto.
+    </p>
+  </div>
+</section>
+
+<% albuns.forEach((album, i) => { %>
+<section class="section album" <% if (i % 2) { %>style="background:var(--paper-2);border-block:1px solid var(--line)"<% } %>>
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow"><%= album.fotos.length %> fotos</p>
+        <h2><%= album.titulo %></h2>
+        <p class="muted" style="max-width:62ch;margin:.5rem 0 0"><%= album.texto %></p>
+      </div>
+    </div>
+
+    <div class="album-grid">
+      <% album.fotos.forEach(f => { %>
+        <figure class="album-foto">
+          <a href="/album/<%= f.arquivo %>.jpg" data-ampliar data-legenda="<%= f.legenda %>">
+            <img src="/album/<%= f.arquivo %>.jpg" alt="<%= f.alt %>"
+                 width="<%= f.l %>" height="<%= f.a %>" loading="lazy" decoding="async">
+          </a>
+          <figcaption><%= f.legenda %></figcaption>
+        </figure>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<% }) %>
+
+<dialog class="ampliada" data-ampliada aria-label="Foto ampliada">
+  <button class="ampliada-fechar" type="button" data-ampliada-fechar aria-label="Fechar">&times;</button>
+  <button class="ampliada-nav is-prev" type="button" data-ampliada-passo="-1" aria-label="Foto anterior">&#8249;</button>
+  <figure>
+    <img src="" alt="" data-ampliada-img>
+    <figcaption data-ampliada-legenda></figcaption>
+  </figure>
+  <button class="ampliada-nav is-next" type="button" data-ampliada-passo="1" aria-label="Próxima foto">&#8250;</button>
+</dialog>
+
+<%- include('../partials/footer') %>

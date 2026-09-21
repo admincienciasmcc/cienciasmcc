@@ -36,7 +36,7 @@
   <% if (post.cover) { %>
     <div class="wrap">
       <figure class="post-cover">
-        <img src="<%= post.cover %>" alt="">
+        <img src="<%= post.cover %>" alt="" fetchpriority="high" decoding="async">
         <% if (post.cover_credit) { %><figcaption><%= post.cover_credit %></figcaption><% } %>
       </figure>
     </div>
