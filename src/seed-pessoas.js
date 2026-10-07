@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Estabelece as duas idealizadoras do projeto e distribui o conteúdo entre elas.
+ * Estabelece as idealizadoras do projeto e distribui o conteúdo entre elas.
  *
  *   npm run pessoas
  *
@@ -12,6 +12,7 @@
 
 const { q, init, encerrar, setSetting } = require('./db');
 const sonia = require('./lattes/sonia');
+const denise = require('./lattes/denise');
 
 /* --------------------------------------------------------- perfis ----- */
 
@@ -95,12 +96,14 @@ async function gravarPessoa(dados) {
 
 async function main() {
   await init();
-  console.log('\nConfigurando as duas idealizadoras do projeto…\n');
+  console.log('\nConfigurando as idealizadoras do projeto…\n');
 
   const idMaria = await gravarPessoa(MARIA);
   const idSonia = await gravarPessoa(SONIA);
+  const idDenise = await gravarPessoa(denise.PERFIL);
   console.log(`  · Maria Cristina dos Santos Sobreira de Sampaio (id ${idMaria})`);
-  console.log(`  · Sonia Bonduki (id ${idSonia})\n`);
+  console.log(`  · Sonia Bonduki (id ${idSonia})`);
+  console.log(`  · Denise Mirás (id ${idDenise})\n`);
 
   /* Todo o currículo já carregado é da Maria Cristina. */
   const TABELAS = [
@@ -149,21 +152,30 @@ async function main() {
   }
   console.log(`  · eventos e congressos da Sonia: ${sonia.EVENTOS.length}`);
 
+  /* Áreas de trabalho da Denise — regravadas do zero, como as da Sonia. */
+  await q.run('DELETE FROM research_lines WHERE person_id = ?', idDenise);
+  const SQL_LINHA_D = `INSERT INTO research_lines (title, summary, keywords, icon, position, person_id)
+     VALUES (?,?,?,?,?,?)`;
+  for (const [i, l] of denise.LINHAS.entries()) {
+    await q.run(SQL_LINHA_D, l.title, l.summary, l.keywords, l.icon, i, idDenise);
+  }
+  console.log(`\n  · áreas de trabalho da Denise: ${denise.LINHAS.length}`);
+
   /* --------------------------------------------- identidade do site --- */
   await setSetting('site_title', 'Sob a luz da ciência');
-  await setSetting('site_tagline', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
+  await setSetting('site_tagline', 'Maria Cristina dos Santos Sobreira de Sampaio, Sonia Bonduki e Denise Mirás');
   await setSetting(
     'site_description',
-    'Sob a luz da ciência é um projeto de divulgação científica ' +
-      'de Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki, duas biólogas. Imunologia, animais ' +
-      'peçonhentos, Amazônia e ensino de Ciências — separando o que é mito, o que é ' +
-      'curiosidade e o que é conceito.',
+    'Sob a luz da ciência é um projeto de divulgação científica de ' +
+      'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki, biólogas, com ' +
+      'Denise Mirás, jornalista. Imunologia, animais peçonhentos, Amazônia e ensino ' +
+      'de Ciências — separando o que é mito, o que é curiosidade e o que é conceito.',
   );
-  await setSetting('owner_name', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
-  await setSetting('owner_short', 'Maria Cristina dos Santos Sobreira de Sampaio e Sonia Bonduki');
+  await setSetting('owner_name', 'Maria Cristina dos Santos Sobreira de Sampaio, Sonia Bonduki e Denise Mirás');
+  await setSetting('owner_short', 'Maria Cristina dos Santos Sobreira de Sampaio, Sonia Bonduki e Denise Mirás');
   await setSetting('projeto_duplo', '1');
 
-  console.log('\nPronto. As duas estão no site.\n');
+  console.log('\nPronto. As três estão no site.\n');
 }
 
 main()

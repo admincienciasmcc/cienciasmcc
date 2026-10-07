@@ -6,7 +6,7 @@
     <p class="eyebrow">Produção científica</p>
     <h1>Publicações</h1>
     <p class="hero-lead">
-      Artigos em periódicos, livros e capítulos transcritos dos currículos das duas.
+      Artigos em periódicos, livros e capítulos transcritos dos currículos das autoras.
       A lista completa, com resumos expandidos e trabalhos em anais, está na Plataforma
       Lattes<% const comLattes = pessoas.filter(p => p.lattes_url); %><% if (comLattes.length) { %>
       — <% comLattes.forEach((p, i) => { %><a href="<%= p.lattes_url %>" target="_blank" rel="noopener"><%= p.short_name %></a><%= i < comLattes.length - 1 ? ' · ' : '' %><% }) %><% } %>.

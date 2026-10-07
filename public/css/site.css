@@ -41,7 +41,10 @@
   /* gradientes — o traço mais característico do template */
   --grad-primary: linear-gradient(110deg, #15603a 0%, #0f766e 100%);
   --grad-warm: linear-gradient(110deg, #0f766e 0%, #3f9e7c 100%);
-  --grad-accent: linear-gradient(110deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #3f9e7c) 100%);
+  /* Atenção: NÃO use uma variável para o gradiente da pessoa. O var(--accent)
+     dentro dela é resolvido aqui no :root, no verde padrão, e não acompanha a
+     cor de cada autora. Quem precisa da cor individual escreve o gradiente
+     direto na regra. */
 
   /* elevação: sombra difusa, sem borda — cartões "flutuam" */
   --shadow: 0 2px 6px rgba(31, 45, 36, .04), 0 12px 32px -14px rgba(31, 45, 36, .16);
@@ -171,7 +174,7 @@ p { margin: 0 0 1.1em; }
 .brand-face {
   width: 42px; height: 42px; border-radius: 50%; overflow: hidden; flex: none;
   display: grid; place-items: center;
-  background: var(--grad-accent);
+  background: linear-gradient(110deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #3f9e7c) 100%);
   color: #fff; font-size: .82rem; font-weight: 700; letter-spacing: .02em;
   box-shadow: 0 0 0 3px var(--card), 0 4px 10px -4px rgba(31, 45, 36, .5);
 }
@@ -252,7 +255,7 @@ p { margin: 0 0 1.1em; }
 .btn:active { transform: translateY(1px); }
 
 .btn-primary {
-  background: var(--grad-accent); color: #fff;
+  background: linear-gradient(110deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #3f9e7c) 100%); color: #fff;
   box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--accent) 90%, #000);
 }
 .btn-primary:hover { color: #fff; box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--accent) 90%, #000); }
@@ -346,7 +349,7 @@ p { margin: 0 0 1.1em; }
 .page-head .filtro-pessoa { margin-top: 1.5rem; }
 .page-head .filtro-pessoa .chip-plain { color: var(--ink-2); }
 .page-head:has(+ .section.overlap) { padding-bottom: 6.5rem; }
-.page-head.is-profile { background: var(--grad-accent); }
+.page-head.is-profile { background: linear-gradient(110deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #3f9e7c) 100%); }
 .page-head.is-profile .portrait { max-width: 320px; margin-left: auto; }
 .page-head .duo-role { color: rgba(255, 255, 255, .85); }
 .page-head .portrait { box-shadow: 0 20px 50px -22px rgba(0, 0, 0, .75); }
@@ -367,7 +370,7 @@ p { margin: 0 0 1.1em; }
 .avatar {
   width: var(--av, 44px); height: var(--av, 44px); flex: none;
   border-radius: 50%; overflow: hidden; display: grid; place-items: center;
-  background: var(--grad-accent); color: #fff;
+  background: linear-gradient(110deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #3f9e7c) 100%); color: #fff;
   font-size: calc(var(--av, 44px) * .36); font-weight: 700; line-height: 1;
   box-shadow: 0 0 0 2px var(--card), 0 3px 8px -3px rgba(31, 45, 36, .5);
 }
@@ -477,7 +480,7 @@ a.chip-plain:hover { background: color-mix(in srgb, var(--forest) 12%, transpare
    a mesma classe usada como etiqueta de categoria continua só tingida. */
 .filters > .chip:not(.chip-plain),
 .filters .chip.is-active,
-.chip.is-active { background: var(--grad-accent); color: #fff; }
+.chip.is-active { background: linear-gradient(110deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #3f9e7c) 100%); color: #fff; }
 .filters > a.chip:not(.chip-plain):hover,
 .filters a.chip.is-active:hover { color: #fff; }
 
@@ -748,13 +751,23 @@ textarea { min-height: 130px; resize: vertical; line-height: 1.6; }
 
 /* ------------------------------------------------------------- duas autoras */
 
-.duo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; }
+/* a grade acompanha quantas idealizadoras existirem, sem número fixo */
+.duo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 2rem; }
 @media (max-width: 900px) { .duo-grid { grid-template-columns: 1fr; } }
 
 .duo-card {
-  display: grid; grid-template-columns: 200px 1fr; gap: 1.75rem;
-  background: var(--card); border-radius: var(--radius); padding: 1.75rem;
+  /* minmax(0,…) nas duas colunas: sem isso o nome longo não quebra e vaza */
+  display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr); gap: 1.4rem;
+  background: var(--card); border-radius: var(--radius); padding: 1.5rem;
   box-shadow: var(--shadow); border-top: 4px solid var(--accent);
+}
+.duo-card > * { min-width: 0; }
+.duo-card h2 { overflow-wrap: anywhere; }
+/* numa coluna estreita a ficha quebra em duas linhas em vez de vazar */
+.duo-card .filters { min-width: 0; }
+.duo-card .chip {
+  max-width: 100%; white-space: normal; text-align: left;
+  line-height: 1.3; padding-block: .3rem;
 }
 @media (max-width: 1080px) {
   .duo-card { grid-template-columns: 1fr; }
@@ -763,7 +776,7 @@ textarea { min-height: 130px; resize: vertical; line-height: 1.6; }
 
 .duo-portrait {
   border-radius: var(--radius-sm); overflow: hidden;
-  aspect-ratio: 3 / 4; background: var(--grad-accent);
+  aspect-ratio: 3 / 4; background: linear-gradient(110deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #3f9e7c) 100%);
   display: grid; place-items: center;
 }
 .duo-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; }
