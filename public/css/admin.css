@@ -497,3 +497,9 @@ input, textarea, select { max-width: 100%; }
   table.list td:first-child { width: 70%; }
   table.list .btn-sm { padding: .3rem .6rem; white-space: nowrap; }
 }
+
+/* a marca do painel passou a ser a logo */
+.side-brand img.mark, .login-card img.mark {
+  background: #fff; object-fit: contain; padding: 2px;
+}
+.login-card img.mark { display: block; }

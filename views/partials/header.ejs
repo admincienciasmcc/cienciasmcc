@@ -1,13 +1,7 @@
 <header class="site-header">
   <div class="wrap bar">
     <a class="brand" href="/">
-      <span class="brand-duo" aria-hidden="true">
-        <% pessoas.forEach(p => { %>
-          <span class="brand-face" style="--accent: <%= p.accent %>">
-            <% if (p.portrait) { %><img src="<%= p.portrait %>" alt="" width="42" height="42" decoding="async"><% } else { %><%= p.initials %><% } %>
-          </span>
-        <% }) %>
-      </span>
+      <img class="brand-logo" src="/img/logo.png" alt="" width="512" height="512" decoding="async">
       <span class="brand-text">
         <strong><%= settings.site_title %></strong>
         <span><%= settings.site_tagline %></span>

@@ -66,6 +66,10 @@ function criarApp() {
   app.use(aguardar(async (req, res, next) => {
     res.locals.settings = await getSettings();
     res.locals.path = req.path;
+    // usado nas prévias de compartilhamento, que exigem endereço absoluto
+    res.locals.origin = process.env.SITE_URL
+      ? process.env.SITE_URL.replace(/\/$/, '')
+      : `${req.protocol}://${req.get('host')}`;
     res.locals.query = req.query;
     res.locals.year = new Date().getFullYear();
     res.locals.categories = await q.all('SELECT * FROM categories ORDER BY position, name');
