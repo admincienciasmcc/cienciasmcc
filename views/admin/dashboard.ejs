@@ -74,6 +74,8 @@
               <td style="text-align:right">
                 <% if (p.status === 'published') { %>
                   <a class="btn btn-ghost btn-sm" href="/blog/<%= p.slug %>" target="_blank">ver</a>
+                <% } else { %>
+                  <a class="btn btn-ghost btn-sm" href="/admin/posts/<%= p.id %>/previa" target="_blank">prévia</a>
                 <% } %>
               </td>
             </tr>

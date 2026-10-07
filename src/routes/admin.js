@@ -13,6 +13,7 @@ const ai = require('../ai');
 const { renderMarkdown, renderComment } = require('../markdown');
 const storage = require('../storage');
 const { formatDate } = require('./public');
+const tempo = require('../tempo');
 
 const router = criarRouter();
 
@@ -22,7 +23,9 @@ router.use(async (req, res, next) => {
   res.locals.layoutAdmin = true;
   res.locals.csrf = auth.csrfToken(req, res);
   res.locals.aiEnabled = ai.enabled();
-  res.locals.fmt = formatDate;
+  res.locals.fmt = (v) => tempo.dataCurta(v);
+  res.locals.fmtExtenso = formatDate;
+  res.locals.paraCampoLocal = tempo.paraCampoLocal;
   res.locals.pessoas = await q.all('SELECT * FROM people ORDER BY position, id');
   next();
 });
@@ -172,12 +175,18 @@ router.get('/', async (req, res) => {
 router.get('/posts', async (req, res) => {
   const status = req.query.status || '';
   const termo = (req.query.q || '').trim();
-  let sql = `SELECT p.*, c.name AS category_name FROM posts p
-               LEFT JOIN categories c ON c.id = p.category_id WHERE 1=1`;
+  const quem = parseInt(req.query.quem, 10) || '';
+  let sql = `SELECT p.*, c.name AS category_name, pe.short_name AS author_name FROM posts p
+               LEFT JOIN categories c ON c.id = p.category_id
+               LEFT JOIN people pe ON pe.id = p.person_id WHERE 1=1`;
   const params = [];
   if (status) {
     sql += ' AND p.status = ?';
     params.push(status);
+  }
+  if (quem) {
+    sql += ' AND p.person_id = ?';
+    params.push(quem);
   }
   if (termo) {
     sql += ' AND (p.title ILIKE ? OR p.body_md ILIKE ?)';
@@ -190,6 +199,7 @@ router.get('/posts', async (req, res) => {
     posts: await q.all(sql, ...params),
     status,
     termo,
+    quem,
     counts: {
       all: (await q.get('SELECT COUNT(*) AS n FROM posts')).n,
       published: (await q.get("SELECT COUNT(*) AS n FROM posts WHERE status='published'")).n,
@@ -301,14 +311,13 @@ router.post('/posts/salvar', async (req, res) => {
   const slug = await uniqueSlug(b.slug || title, id);
 
   let status = ['draft', 'published', 'scheduled'].includes(b.status) ? b.status : 'draft';
-  let publishedAt = b.published_at ? String(b.published_at).replace('T', ' ') + ':00' : null;
+  // o campo vem em horário de Brasília; o banco guarda UTC
+  let publishedAt = tempo.deBrasiliaParaUtc(b.published_at);
 
-  if (status === 'published' && !publishedAt) {
-    publishedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  }
+  if (status === 'published' && !publishedAt) publishedAt = tempo.agoraUtc();
   if (status === 'scheduled') {
     if (!publishedAt) status = 'draft';
-    else if (new Date(publishedAt.replace(' ', 'T')) <= new Date()) status = 'published';
+    else if (publishedAt <= tempo.agoraUtc()) status = 'published';
   }
 
   const fields = {
@@ -337,6 +346,19 @@ router.post('/posts/salvar', async (req, res) => {
 
   let postId = id;
   if (id) {
+    // guarda o que estava salvo antes, se o texto ou o título mudaram
+    const anterior = await q.get('SELECT title, subtitle, excerpt, body_md FROM posts WHERE id = ?', id);
+    if (anterior && (anterior.body_md !== body_md || anterior.title !== title)) {
+      await q.run(
+        'INSERT INTO post_revisions (post_id, user_id, title, subtitle, excerpt, body_md) VALUES (?,?,?,?,?,?)',
+        id, req.user.id, anterior.title, anterior.subtitle || '', anterior.excerpt || '', anterior.body_md || '',
+      );
+      await q.run(
+        `DELETE FROM post_revisions WHERE post_id = ? AND id NOT IN
+           (SELECT id FROM post_revisions WHERE post_id = ? ORDER BY saved_at DESC LIMIT 20)`,
+        id, id,
+      );
+    }
     const cols = Object.keys(fields).map((k) => `${k} = ?`).join(', ');
     await q.run(
       `UPDATE posts SET ${cols}, updated_at = datetime('now') WHERE id = ?`,
@@ -359,8 +381,107 @@ router.post('/posts/salvar', async (req, res) => {
   await reindexPost(postId);
   await log(req.user.id, id ? 'post.update' : 'post.create', title);
 
-  const msg = status === 'published' ? 'Post publicado.' : 'Alterações salvas.';
+  const msg =
+    status === 'published' ? 'Post publicado.'
+    : status === 'scheduled' ? `Agendado para ${tempo.dataCurta(publishedAt)}.`
+    : 'Rascunho salvo.';
   res.redirect(`/admin/posts/${postId}?ok=${encodeURIComponent(msg)}`);
+});
+
+/* ------------------------------------------------- prévia da página real */
+
+/** Monta um post completo (tags, galeria, pessoa) para a página pública. */
+async function montarParaPrevia(post) {
+  const tempoMod = require('../tempo');
+  const { outline } = require('../markdown');
+  post.body_html = renderMarkdown(post.body_md || '');
+  post.tags = post.id
+    ? await q.all('SELECT t.* FROM tags t JOIN post_tags pt ON pt.tag_id = t.id WHERE pt.post_id = ? ORDER BY t.name', post.id)
+    : [];
+  post.dateLabel = tempoMod.dataPorExtenso(post.published_at || tempoMod.agoraUtc());
+  post.outline = outline(post.body_md || '');
+  post.gallery = post.gallery || (post.id
+    ? await q.all('SELECT * FROM post_images WHERE post_id = ? ORDER BY position, id', post.id)
+    : []);
+  const pessoa = (post.person_id && await q.get('SELECT * FROM people WHERE id = ?', post.person_id))
+    || await q.get('SELECT * FROM people ORDER BY position LIMIT 1');
+  post.pessoa = pessoa ? { ...pessoa, languages: [], areas: [] } : null;
+  const cat = post.category_id ? await q.get('SELECT * FROM categories WHERE id = ?', post.category_id) : null;
+  post.category_name = cat ? cat.name : '';
+  post.category_slug = cat ? cat.slug : '';
+  post.category_color = cat ? cat.color : '';
+  post.reading_time = post.reading_time || intel.readingStats(post.body_md || '').readingTime;
+  post.views = post.views || 0;
+  return post;
+}
+
+/** Prévia de um post já salvo, qualquer que seja a situação dele. */
+router.get('/posts/:id/previa', async (req, res, next) => {
+  const post = await q.get('SELECT * FROM posts WHERE id = ?', req.params.id);
+  if (!post) return next();
+  res.render('public/post', {
+    title: post.title,
+    post: await montarParaPrevia(post),
+    comments: [],
+    commentCount: 0,
+    related: [],
+    canComment: false,
+    previa: true,
+    pessoas: await q.all('SELECT * FROM people WHERE active = 1 ORDER BY position, id'),
+  });
+});
+
+/** Prévia do que está no editor agora, mesmo sem salvar: o formulário é enviado para cá. */
+router.post('/posts/previa', async (req, res) => {
+  const b = req.body;
+  const urls = [].concat(b['gallery_url[]'] || b.gallery_url || []);
+  const captions = [].concat(b['gallery_caption[]'] || b.gallery_caption || []);
+  const credits = [].concat(b['gallery_credit[]'] || b.gallery_credit || []);
+  const post = {
+    id: parseInt(b.id, 10) || 0,
+    slug: intel.slugify(b.slug || b.title || 'previa'),
+    title: String(b.title || 'Sem título'),
+    subtitle: String(b.subtitle || ''),
+    excerpt: String(b.excerpt || ''),
+    body_md: String(b.body_md || ''),
+    cover: String(b.cover || ''),
+    cover_credit: String(b.cover_credit || ''),
+    category_id: parseInt(b.category_id, 10) || null,
+    person_id: parseInt(b.person_id, 10) || null,
+    source_url: String(b.source_url || ''),
+    source_title: String(b.source_title || ''),
+    doi: String(b.doi || ''),
+    published_at: null,
+    gallery: urls.map((url, i) => ({ url, caption: captions[i] || '', credit: credits[i] || '' })).filter((g) => g.url),
+  };
+  res.render('public/post', {
+    title: post.title,
+    post: await montarParaPrevia(post),
+    comments: [],
+    commentCount: 0,
+    related: [],
+    canComment: false,
+    previa: true,
+    pessoas: await q.all('SELECT * FROM people WHERE active = 1 ORDER BY position, id'),
+  });
+});
+
+/* ------------------------------------------------------ versões salvas */
+
+router.get('/api/posts/:id/versoes', async (req, res) => {
+  const versoes = await q.all(
+    `SELECT r.id, r.saved_at, r.title, length(r.body_md) AS tamanho, u.name AS autor
+       FROM post_revisions r LEFT JOIN users u ON u.id = r.user_id
+      WHERE r.post_id = ? ORDER BY r.saved_at DESC LIMIT 20`,
+    req.params.id,
+  );
+  res.json({ versoes: versoes.map((v) => ({ ...v, quando: tempo.dataCurta(v.saved_at) })) });
+});
+
+router.get('/api/versoes/:id', async (req, res) => {
+  const v = await q.get('SELECT * FROM post_revisions WHERE id = ?', req.params.id);
+  if (!v) return res.status(404).json({ erro: 'Versão não encontrada.' });
+  res.json({ versao: { ...v, quando: tempo.dataCurta(v.saved_at) } });
 });
 
 router.post('/posts/:id/excluir', async (req, res) => {
@@ -533,6 +654,26 @@ router.get('/midia', async (req, res) => {
     title: 'Imagens',
     media: await q.all('SELECT * FROM media ORDER BY created_at DESC LIMIT 200'),
   });
+});
+
+/*
+ * Envio pelo editor: devolve JSON com a URL de cada imagem, para a foto entrar
+ * no texto ou na galeria sem sair da página.
+ */
+router.post('/api/midia/enviar', upload.array('arquivos', 10), auth.checkCsrf, async (req, res) => {
+  const enviadas = [];
+  for (const f of req.files || []) {
+    const url = await storage.guardar(f);
+    const alt = String(req.body.alt || '').slice(0, 200);
+    const credit = String(req.body.credit || '').slice(0, 200);
+    const info = await q.run(
+      'INSERT INTO media (filename, original, mime, size, alt, credit) VALUES (?,?,?,?,?,?)',
+      url, f.originalname, f.mimetype, f.size, alt, credit,
+    );
+    enviadas.push({ id: Number(info.lastInsertRowid), url, alt, credit, original: f.originalname });
+  }
+  await log(req.user.id, 'media.upload', `${enviadas.length} pelo editor`);
+  res.json({ ok: true, imagens: enviadas });
 });
 
 router.post('/midia/enviar', upload.array('arquivos', 10), auth.checkCsrf, async (req, res) => {

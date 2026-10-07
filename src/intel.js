@@ -368,6 +368,8 @@ function grafiaDaCasa(texto = '') {
   });
 }
 
+const intelSentences = (t) => sentences(t);
+
 function auditPost(post = {}) {
   const items = [];
   const add = (level, label, hint = '') => items.push({ level, label, hint });
@@ -420,6 +422,35 @@ function auditPost(post = {}) {
   if (post.source_url && !post.source_title)
     add('aviso', 'Fonte sem título', 'Dê um nome à fonte para a citação ficar completa.');
   if (post.source_url) add('ok', 'Fonte externa creditada.');
+
+  /* ---------------------------------------- checagens de redação --- */
+  const subtitulo = (post.subtitle || '').trim();
+  if (!subtitulo && stats.wordCount > 150)
+    add('aviso', 'Sem subtítulo (linha fina)', 'Uma linha abaixo do título que diz o que o texto entrega.');
+  else if (subtitulo) add('ok', 'Subtítulo preenchido.');
+
+  if (/[.!]$/.test(title)) add('aviso', 'Título termina com ponto final', 'Títulos de jornal não levam ponto.');
+
+  const frasesLongas = intelSentences(stripMarkdown(md)).filter((f) => words(f).length > 35).length;
+  if (frasesLongas) add('aviso', `${frasesLongas} frase(s) com mais de 35 palavras`, 'Frases longas cansam. Quebre em duas.');
+
+  const paragrafos = md.split(/\n{2,}/).filter((p) => p.trim() && !/^[#>\-*!|]/.test(p.trim()));
+  const parLongos = paragrafos.filter((p) => words(p).length > 120).length;
+  if (parLongos) add('aviso', `${parLongos} parágrafo(s) com mais de 120 palavras`, 'Na tela, parágrafos curtos leem melhor.');
+
+  const imagensSemLegenda = (md.match(/!\[[^\]]*\]\([^)\s]+\)/g) || []).length;
+  if (imagensSemLegenda)
+    add('aviso', `${imagensSemLegenda} foto(s) no texto sem legenda`, 'Clique na foto inserida e acrescente legenda e crédito.');
+  const imagensSemAlt = (md.match(/!\[\s*\]\(/g) || []).length;
+  if (imagensSemAlt) add('aviso', `${imagensSemAlt} foto(s) sem descrição`, 'A descrição é lida por quem não enxerga a imagem.');
+
+  const linksInseguros = (md.match(/\]\(http:\/\//g) || []).length;
+  if (linksInseguros) add('aviso', `${linksInseguros} link(s) em http:// sem segurança`, 'Prefira o endereço com https://.');
+
+  if (/\b(clique aqui|veja aqui)\b/i.test(md)) add('aviso', 'Evite "clique aqui" em links', 'O texto do link deve dizer aonde ele leva.');
+
+  const comentarios = (md.match(/\[verificar[^\]]*\]|\bTODO\b|\bXXX\b/gi) || []).length;
+  if (comentarios) add('erro', `${comentarios} marcação(ões) pendente(s) no texto`, 'Há trechos "[verificar…]" ou TODO para resolver antes de publicar.');
 
   // "Imunologia" sempre com maiúscula — regra de estilo do projeto.
   const caixa = grafiaDaCasa(

@@ -2,55 +2,96 @@
 <%- include('partials/nav') %>
 
 <div class="topbar">
-  <h1>Posts</h1>
+  <div>
+    <h1>Posts</h1>
+    <p class="muted small" style="margin:0">Rascunhos e agendados têm prévia; publicados têm o link do site.</p>
+  </div>
   <div class="spacer"></div>
   <form class="inline-form" method="get" action="/admin/posts">
     <% if (status) { %><input type="hidden" name="status" value="<%= status %>"><% } %>
-    <input type="search" name="q" value="<%= termo %>" placeholder="Buscar…" style="width:220px">
+    <% if (quem) { %><input type="hidden" name="quem" value="<%= quem %>"><% } %>
+    <input type="search" name="q" value="<%= termo %>" placeholder="Buscar no título ou no texto…" style="width:240px">
     <button class="btn btn-ghost btn-sm" type="submit">Buscar</button>
   </form>
   <a class="btn btn-primary" href="/admin/posts/novo">✍️ Novo post</a>
 </div>
 
+<%
+  const link = (extra) => {
+    const p = new URLSearchParams();
+    const merged = Object.assign({ status, quem, q: termo }, extra);
+    Object.entries(merged).forEach(([k, v]) => { if (v) p.set(k, v); });
+    const s = p.toString();
+    return '/admin/posts' + (s ? '?' + s : '');
+  };
+%>
+
 <div class="tabs">
-  <a class="<%= !status ? 'is-active' : '' %>" href="/admin/posts">Todos (<%= counts.all %>)</a>
-  <a class="<%= status === 'published' ? 'is-active' : '' %>" href="/admin/posts?status=published">Publicados (<%= counts.published %>)</a>
-  <a class="<%= status === 'draft' ? 'is-active' : '' %>" href="/admin/posts?status=draft">Rascunhos (<%= counts.draft %>)</a>
-  <a class="<%= status === 'scheduled' ? 'is-active' : '' %>" href="/admin/posts?status=scheduled">Agendados (<%= counts.scheduled %>)</a>
+  <a class="<%= !status ? 'is-active' : '' %>" href="<%= link({ status: '' }) %>">Todos (<%= counts.all %>)</a>
+  <a class="<%= status === 'published' ? 'is-active' : '' %>" href="<%= link({ status: 'published' }) %>">No ar (<%= counts.published %>)</a>
+  <a class="<%= status === 'draft' ? 'is-active' : '' %>" href="<%= link({ status: 'draft' }) %>">Rascunhos (<%= counts.draft %>)</a>
+  <a class="<%= status === 'scheduled' ? 'is-active' : '' %>" href="<%= link({ status: 'scheduled' }) %>">Agendados (<%= counts.scheduled %>)</a>
 </div>
+
+<% if (pessoas.length > 1) { %>
+<div class="tabs" style="margin-top:-.5rem">
+  <span class="muted small" style="align-self:center;margin-right:.35rem">Quem assina:</span>
+  <a class="<%= !quem ? 'is-active' : '' %>" href="<%= link({ quem: '' }) %>">Todas</a>
+  <% pessoas.forEach(p => { %>
+    <a class="<%= String(quem) === String(p.id) ? 'is-active' : '' %>" href="<%= link({ quem: p.id }) %>"><%= p.short_name.split(' ')[0] %></a>
+  <% }) %>
+</div>
+<% } %>
 
 <div class="panel">
   <% if (posts.length) { %>
     <table class="list">
       <thead>
-        <tr><th style="width:45%">Título</th><th>Categoria</th><th>Situação</th><th>Data</th><th>Leituras</th><th></th></tr>
+        <tr>
+          <th style="width:44%">Título</th>
+          <th>Quem assina</th>
+          <th>Situação</th>
+          <th class="col-extra">Data</th>
+          <th class="col-extra">Leituras</th>
+          <th></th>
+        </tr>
       </thead>
       <tbody>
         <% posts.forEach(p => { %>
           <tr>
             <td>
-              <a href="/admin/posts/<%= p.id %>"><%= p.title %></a>
+              <a href="/admin/posts/<%= p.id %>"><b><%= p.title %></b></a>
               <% if (p.featured) { %> <span class="tag tag-amber">destaque</span><% } %>
-              <div class="muted small"><%= p.word_count %> palavras · <%= p.reading_time %> min</div>
+              <div class="muted small">
+                <%= p.category_name || 'Sem categoria' %> · <%= p.word_count %> palavras · <%= p.reading_time %> min
+                <% if (!p.cover) { %> · <span style="color:var(--a-amber)">sem capa</span><% } %>
+              </div>
             </td>
-            <td class="small"><%= p.category_name || '—' %></td>
+            <td class="small"><%= p.author_name ? p.author_name.split(' ')[0] : '—' %></td>
             <td>
-              <% if (p.status === 'published') { %><span class="tag tag-green">publicado</span>
+              <% if (p.status === 'published') { %><span class="tag tag-green">no ar</span>
               <% } else if (p.status === 'scheduled') { %><span class="tag tag-blue">agendado</span>
               <% } else { %><span class="tag tag-amber">rascunho</span><% } %>
             </td>
-            <td class="small muted"><%= p.published_at ? fmt(p.published_at) : '—' %></td>
-            <td class="small"><%= p.views %></td>
+            <td class="small muted col-extra">
+              <% if (p.status === 'scheduled') { %>sai em <%= fmt(p.published_at) %>
+              <% } else if (p.published_at) { %><%= fmt(p.published_at) %>
+              <% } else { %>editado <%= fmt(p.updated_at) %><% } %>
+            </td>
+            <td class="small col-extra"><%= p.views %></td>
             <td style="text-align:right;white-space:nowrap">
+              <a class="btn btn-primary btn-sm" href="/admin/posts/<%= p.id %>">editar</a>
               <% if (p.status === 'published') { %>
-                <a class="btn btn-ghost btn-sm" href="/blog/<%= p.slug %>" target="_blank">ver</a>
+                <a class="btn btn-ghost btn-sm" href="/blog/<%= p.slug %>" target="_blank">ver no site</a>
+              <% } else { %>
+                <a class="btn btn-ghost btn-sm" href="/admin/posts/<%= p.id %>/previa" target="_blank">prévia</a>
               <% } %>
               <form method="post" action="/admin/posts/<%= p.id %>/duplicar" style="display:inline">
                 <input type="hidden" name="_csrf" value="<%= csrf %>">
                 <button class="btn btn-ghost btn-sm">duplicar</button>
               </form>
               <form method="post" action="/admin/posts/<%= p.id %>/excluir" style="display:inline"
-                    onsubmit="return confirm('Excluir “<%= p.title.replace(/'/g, "\\'") %>”? Esta ação não pode ser desfeita.')">
+                    data-confirm="Excluir “<%= p.title.replace(/"/g, '&quot;') %>”? Esta ação não pode ser desfeita.">
                 <input type="hidden" name="_csrf" value="<%= csrf %>">
                 <button class="btn btn-danger btn-sm">excluir</button>
               </form>

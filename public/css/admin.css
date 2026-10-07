@@ -53,6 +53,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body.admin {
   margin: 0; background: var(--a-bg); color: var(--a-ink);
@@ -503,3 +504,81 @@ input, textarea, select { max-width: 100%; }
   background: #fff; object-fit: contain; padding: 2px;
 }
 .login-card img.mark { display: block; }
+
+/* =========================================================================
+   Editor — fluxo de publicação, envio direto, recuperação e versões
+   ========================================================================= */
+
+.subtitle-input {
+  border: 0 !important; background: transparent !important; padding: .2rem 0 !important;
+  font-size: 1rem; color: var(--a-ink-2); width: 100%;
+}
+.subtitle-input:focus { outline: none; box-shadow: none !important; }
+
+/* aviso de texto recuperado */
+.recover-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  padding: .8rem 1rem; margin-bottom: 1rem; border-radius: var(--a-radius);
+  background: var(--a-amber-soft); border: 1px solid color-mix(in srgb, var(--a-amber) 40%, transparent);
+}
+.recover-banner b { display: block; color: var(--a-amber); }
+
+/* três escolhas em vez de um menu */
+.status-pills { display: grid; gap: .45rem; }
+.status-pills .pill {
+  display: grid; grid-template-columns: auto 1fr; gap: .15rem .6rem; align-items: center;
+  padding: .6rem .75rem; border: 1px solid var(--a-line); border-radius: 10px; cursor: pointer;
+  background: var(--a-panel); transition: border-color .12s ease, background .12s ease;
+}
+.status-pills .pill input { grid-row: span 2; margin: 0; accent-color: var(--a-green); }
+.status-pills .pill span { font-weight: 650; font-size: .92rem; }
+.status-pills .pill small { color: var(--a-ink-3); font-size: .76rem; }
+.status-pills .pill:has(input:checked) {
+  border-color: var(--a-green); background: var(--a-green-soft);
+}
+.panel-publish .btn-danger { background: var(--a-red); color: #fff; border-color: transparent; }
+
+/* biblioteca */
+.media-dialog { border: 0; border-radius: 14px; padding: 0; max-width: 860px; width: 92vw; }
+.media-dialog::backdrop { background: rgba(10, 20, 14, .55); backdrop-filter: blur(2px); }
+
+.upload-zone {
+  display: flex; align-items: center; gap: .9rem; cursor: pointer;
+  padding: .9rem 1rem; margin-bottom: .6rem; border-radius: 10px;
+  border: 2px dashed color-mix(in srgb, var(--a-green) 45%, var(--a-line));
+  background: color-mix(in srgb, var(--a-green-soft) 55%, transparent);
+  transition: background .12s ease, border-color .12s ease;
+}
+.upload-zone:hover, .upload-zone.is-over { background: var(--a-green-soft); border-color: var(--a-green); }
+.upload-zone.is-busy { opacity: .6; pointer-events: none; }
+.upload-zone .upload-icon { font-size: 1.6rem; }
+#upload-status { min-height: 1.2em; margin-bottom: .6rem; color: var(--a-ink-2); }
+
+.media-item.is-picked { outline: 3px solid var(--a-green); }
+
+/* legenda e crédito antes de inserir a foto no texto */
+.insert-form {
+  display: grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start;
+  padding: 1rem; margin-bottom: 1rem; border-radius: 10px;
+  background: var(--a-bg); border: 1px solid var(--a-line);
+}
+.insert-form img { width: 100%; border-radius: 8px; }
+.insert-form .field { margin-bottom: .6rem; }
+@media (max-width: 600px) { .insert-form { grid-template-columns: 1fr; } .insert-form img { max-width: 160px; } }
+
+/* versões anteriores */
+.version-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .6rem 0; border-bottom: 1px dashed var(--a-line);
+}
+.version-row:last-child { border-bottom: 0; }
+
+/* tabela da ajuda */
+.help-table td { padding: .45rem .6rem; vertical-align: top; }
+.help-table td:first-child { white-space: nowrap; }
+.help-table code { font-size: .82rem; }
+
+@media (max-width: 820px) {
+  .status-pills .pill { padding: .75rem .8rem; }
+  .status-pills .pill span { font-size: 1rem; }
+}

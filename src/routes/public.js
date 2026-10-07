@@ -62,16 +62,11 @@ async function decorate(posts) {
   return posts;
 }
 
-const MESES = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
-];
+const tempo = require('../tempo');
 
+/** Data por extenso, já em horário de Brasília (o banco guarda UTC). */
 function formatDate(value) {
-  if (!value) return '';
-  const d = new Date(String(value).replace(' ', 'T') + (String(value).length <= 10 ? '' : 'Z'));
-  if (Number.isNaN(d.getTime())) return String(value);
-  return `${d.getUTCDate()} de ${MESES[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
+  return tempo.dataPorExtenso(value);
 }
 
 const PUBLISHED = `p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= datetime('now'))`;
@@ -208,6 +203,7 @@ router.get('/blog/:slug', async (req, res, next) => {
 
   post.tags = await tagsOf(post.id);
   post.dateLabel = formatDate(post.published_at);
+  post.updatedLabel = formatDate(post.updated_at);
   post.outline = outline(post.body_md);
   post.gallery = await q.all(
     'SELECT * FROM post_images WHERE post_id = ? ORDER BY position, id',

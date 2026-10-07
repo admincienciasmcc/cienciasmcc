@@ -105,6 +105,21 @@ O nome do projeto, a frase de apoio e a descrição para buscadores ficam em
 **Ajustes → Identidade**; mudar ali reflete no cabeçalho, no `<title>`, nas prévias
 de compartilhamento, no RSS e no rodapé.
 
+## Publicar sem susto
+
+- **Salvamento automático** no navegador enquanto ela escreve. Se a aba fechar
+  ou o computador travar, o texto volta na próxima vez, com um aviso.
+- **Prévia no site**: abre o post como ele vai ficar, em nova aba, sem salvar.
+- **Três escolhas ao salvar** — rascunho, publicar agora ou agendar — e o
+  botão diz exatamente o que vai acontecer.
+- **Agendamento em horário de Brasília.** O banco guarda UTC; a conversão é
+  feita em `src/tempo.js`.
+- **Versões anteriores**: a cada salvamento o texto anterior fica guardado
+  (as últimas 20), com restauração em um clique.
+- **Fotos no texto com legenda e crédito**, enviadas direto do editor — do
+  computador ou da câmera do celular — sem sair da página.
+- **Tipografia automática**: aspas curvas, travessão e reticências.
+
 ## O editor inteligente
 
 Enquanto elas escrevem, o painel da direita recalcula sozinho — **sem internet e

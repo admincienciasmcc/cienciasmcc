@@ -5,6 +5,12 @@
 }) %>
 <%- include('../partials/header') %>
 
+<% if (typeof previa !== 'undefined' && previa) { %>
+  <div class="previa-banner" role="status">
+    <strong>Prévia</strong> — é assim que a página vai ficar. Nada foi publicado; feche esta aba para voltar ao editor.
+  </div>
+<% } %>
+
 <article>
   <header class="post-header">
     <div class="wrap-narrow">
@@ -25,10 +31,13 @@
           </a>
         <% } %>
         <span>&middot;</span>
-        <time datetime="<%= post.published_at %>"><%= post.dateLabel %></time>
+        <time datetime="<%= post.published_at || '' %>"><%= post.dateLabel %></time>
         <span>&middot;</span>
         <span><%= post.reading_time %> min de leitura</span>
         <% if (post.views > 20) { %><span>&middot;</span><span><%= post.views %> leituras</span><% } %>
+        <% if (post.updated_at && post.published_at && String(post.updated_at).slice(0, 10) > String(post.published_at).slice(0, 10)) { %>
+          <span>&middot;</span><span title="Texto revisado depois da publicação">atualizado em <%= post.updatedLabel || post.dateLabel %></span>
+        <% } %>
       </div>
     </div>
   </header>
@@ -80,8 +89,21 @@
         </div>
       <% } %>
 
+      <%
+        const _url = (typeof origin !== 'undefined' ? origin : '') + '/blog/' + post.slug;
+        const _txt = encodeURIComponent(post.title + ' — ' + settings.site_title);
+      %>
+      <div class="share-bar" data-share-url="<%= _url %>">
+        <span class="share-label">Compartilhar</span>
+        <a class="share-btn" href="https://wa.me/?text=<%= _txt %>%20<%= encodeURIComponent(_url) %>" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="share-btn" href="https://www.linkedin.com/sharing/share-offsite/?url=<%= encodeURIComponent(_url) %>" target="_blank" rel="noopener">LinkedIn</a>
+        <a class="share-btn" href="https://twitter.com/intent/tweet?text=<%= _txt %>&url=<%= encodeURIComponent(_url) %>" target="_blank" rel="noopener">X</a>
+        <a class="share-btn" href="mailto:?subject=<%= _txt %>&body=<%= encodeURIComponent(_url) %>">E-mail</a>
+        <button class="share-btn" type="button" data-copy-link>Copiar link</button>
+      </div>
+
       <% if (post.tags.length) { %>
-        <div class="filters" style="margin-top:2.5rem">
+        <div class="filters" style="margin-top:1.5rem">
           <% post.tags.forEach(t => { %>
             <a class="chip chip-plain" href="/blog?tag=<%= t.slug %>"># <%= t.name %></a>
           <% }) %>

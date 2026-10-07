@@ -1,9 +1,24 @@
 <%- include('partials/head') %>
 <%- include('partials/nav') %>
 
-<form method="post" action="/admin/posts/salvar" id="post-form">
+<form method="post" action="/admin/posts/salvar" id="post-form"
+      data-post-id="<%= post ? post.id : '' %>"
+      data-updated="<%= post ? post.updated_at : '' %>"
+      data-status="<%= post ? post.status : 'draft' %>">
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <input type="hidden" name="id" value="<%= post ? post.id : '' %>">
+
+  <!-- aviso de texto recuperado: aparece só quando há algo mais novo salvo no navegador -->
+  <div class="recover-banner" id="recover-banner" hidden>
+    <div>
+      <b>Há um texto mais recente que não foi salvo</b>
+      <span class="muted small">guardado neste navegador às <span id="recover-time"></span></span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-sm" type="button" id="recover-yes">Recuperar</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="recover-no">Descartar</button>
+    </div>
+  </div>
 
   <div class="topbar">
     <div>
@@ -11,16 +26,21 @@
       <p class="muted small" style="margin:0">
         <% if (post) { %>
           Criado em <%= fmt(post.created_at) %> · última alteração <%= fmt(post.updated_at) %>
+          · <span class="tag <%= post.status === 'published' ? 'tag-green' : post.status === 'scheduled' ? 'tag-blue' : 'tag-amber' %>"><%= post.status === 'published' ? 'no ar' : post.status === 'scheduled' ? 'agendado' : 'rascunho' %></span>
         <% } else { %>
-          Escreva em Markdown. A análise do texto acompanha o que você digita.
+          O texto é guardado automaticamente neste navegador enquanto você escreve.
         <% } %>
+        <span id="autosave-status" class="muted small"></span>
       </p>
     </div>
     <div class="spacer"></div>
     <% if (post && post.status === 'published') { %>
       <a class="btn btn-ghost" href="/blog/<%= post.slug %>" target="_blank">Ver no site ↗</a>
     <% } %>
-    <button class="btn btn-primary" type="submit">Salvar</button>
+    <button class="btn btn-ghost" type="submit" id="btn-previa"
+            formaction="/admin/posts/previa" formmethod="post" formtarget="_blank"
+            title="Abre a página como ela ficaria no site, sem salvar nada">👁 Prévia no site</button>
+    <button class="btn btn-primary" type="submit" id="btn-top">Salvar</button>
   </div>
 
   <div class="editor-grid">
@@ -28,10 +48,10 @@
     <div>
       <div class="panel">
         <input class="title-input" type="text" name="title" id="title" required
-               placeholder="Título do post…" value="<%= post ? post.title : '' %>">
-        <input type="text" name="subtitle" id="subtitle" placeholder="Subtítulo (opcional)"
-               value="<%= post ? post.subtitle : '' %>"
-               style="border:0;background:transparent;padding:.2rem 0;font-size:1rem;color:var(--a-ink-2)">
+               placeholder="Título do post…" value="<%= post ? post.title : '' %>" autocomplete="off">
+        <input type="text" name="subtitle" id="subtitle" class="subtitle-input"
+               placeholder="Linha fina: uma frase que diz o que o texto entrega"
+               value="<%= post ? post.subtitle : '' %>" autocomplete="off">
 
         <div class="muted small linha-slug">
           <span class="campo-slug">Endereço: /blog/<input type="text" name="slug" id="slug"
@@ -42,23 +62,24 @@
 
       <div class="panel" style="margin-top:1.25rem;padding:0;overflow:hidden">
         <div class="toolbar">
-          <button type="button" data-md="bold" title="Negrito"><b>B</b></button>
-          <button type="button" data-md="italic" title="Itálico"><i>I</i></button>
+          <button type="button" data-md="bold" title="Negrito (Ctrl+B)"><b>B</b></button>
+          <button type="button" data-md="italic" title="Itálico (Ctrl+I)"><i>I</i></button>
           <span class="sep"></span>
-          <button type="button" data-md="h2">H2</button>
-          <button type="button" data-md="h3">H3</button>
+          <button type="button" data-md="h2" title="Subtítulo de seção">H2</button>
+          <button type="button" data-md="h3" title="Subtítulo menor">H3</button>
           <span class="sep"></span>
-          <button type="button" data-md="link">🔗 Link</button>
+          <button type="button" data-md="link" title="Link (Ctrl+K)">🔗 Link</button>
           <button type="button" data-md="quote">❝ Citação</button>
           <button type="button" data-md="list">• Lista</button>
-          <button type="button" data-md="image">🖼 Imagem</button>
+          <button type="button" data-md="image" title="Foto no meio do texto, com legenda">🖼 Foto</button>
           <span class="sep"></span>
           <button type="button" id="toggle-preview">👁 Pré-visualizar</button>
+          <button type="button" id="btn-help" title="Como formatar">? Ajuda</button>
           <span class="spacer" style="margin-left:auto"></span>
           <span class="muted small" id="word-count" style="align-self:center;padding-right:.4rem"></span>
         </div>
         <textarea name="body_md" id="body_md"
-                  placeholder="Escreva aqui. Use ## para subtítulos, **negrito**, [texto](link)…"><%= post ? post.body_md : '' %></textarea>
+                  placeholder="Escreva aqui. Dois Enter separam parágrafos. ## para subtítulos, **negrito**, [texto](link)…"><%= post ? post.body_md : '' %></textarea>
         <div class="preview" id="preview" hidden></div>
       </div>
 
@@ -75,8 +96,7 @@
         </p>
 
         <div class="btn-row" style="margin-bottom:1rem">
-          <button class="btn btn-primary btn-sm" type="button" id="btn-add-gallery">＋ Escolher da galeria</button>
-          <a class="btn btn-ghost btn-sm" href="/admin/midia" target="_blank">Enviar novas fotos ↗</a>
+          <button class="btn btn-primary btn-sm" type="button" id="btn-add-gallery">＋ Escolher ou enviar fotos</button>
         </div>
 
         <div id="gallery-list"></div>
@@ -151,13 +171,30 @@
           <% } %>
         </div>
       </div>
+
+      <% if (post) { %>
+      <!-- versões anteriores -->
+      <div class="panel" style="margin-top:1.25rem" id="versions-panel">
+        <div class="panel-head">
+          <h3>🕘 Versões anteriores</h3>
+          <div class="spacer"></div>
+          <button class="btn btn-ghost btn-sm" type="button" id="btn-versions">ver versões</button>
+        </div>
+        <p class="muted small">
+          A cada vez que você salva, o texto anterior fica guardado. Dá para voltar a
+          qualquer uma das últimas 20 versões.
+        </p>
+        <div id="versions-list" class="small"></div>
+      </div>
+      <% } %>
     </div>
 
     <!-- ============================================ coluna do assistente -->
     <div class="side-panel">
       <!-- publicação -->
-      <div class="panel">
+      <div class="panel panel-publish">
         <h3>Publicação</h3>
+
         <div class="field">
           <label for="person_id">Quem assina este texto</label>
           <select name="person_id" id="person_id">
@@ -169,20 +206,35 @@
             <% }) %>
           </select>
         </div>
+
         <div class="field">
-          <label for="status">Situação</label>
-          <select name="status" id="status">
-            <option value="draft" <%= !post || post.status === 'draft' ? 'selected' : '' %>>Rascunho</option>
-            <option value="published" <%= post && post.status === 'published' ? 'selected' : '' %>>Publicado</option>
-            <option value="scheduled" <%= post && post.status === 'scheduled' ? 'selected' : '' %>>Agendar</option>
-          </select>
+          <label>O que fazer ao salvar</label>
+          <div class="status-pills" id="status-pills">
+            <label class="pill">
+              <input type="radio" name="status" value="draft" <%= !post || post.status === 'draft' ? 'checked' : '' %>>
+              <span>📝 Guardar como rascunho</span>
+              <small>Só você vê. Nada vai ao ar.</small>
+            </label>
+            <label class="pill">
+              <input type="radio" name="status" value="published" <%= post && post.status === 'published' ? 'checked' : '' %>>
+              <span>🚀 <%= post && post.status === 'published' ? 'Manter no ar' : 'Publicar agora' %></span>
+              <small>Aparece no site e no RSS na hora.</small>
+            </label>
+            <label class="pill">
+              <input type="radio" name="status" value="scheduled" <%= post && post.status === 'scheduled' ? 'checked' : '' %>>
+              <span>⏰ Agendar</span>
+              <small>Publica sozinho na data abaixo.</small>
+            </label>
+          </div>
         </div>
-        <div class="field" id="date-field" <%= post && post.status === 'scheduled' ? '' : '' %>>
-          <label for="published_at">Data de publicação</label>
+
+        <div class="field" id="date-field" <%= post && post.status !== 'draft' ? '' : 'hidden' %>>
+          <label for="published_at" id="date-label">Data e hora de publicação (horário de Brasília)</label>
           <input id="published_at" type="datetime-local" name="published_at"
-                 value="<%= post && post.published_at ? String(post.published_at).replace(' ', 'T').slice(0, 16) : '' %>">
-          <div class="hint">Deixe vazio para usar o momento em que salvar.</div>
+                 value="<%= post && post.published_at ? paraCampoLocal(post.published_at) : '' %>">
+          <div class="hint" id="date-hint">Deixe vazio para usar o momento em que salvar.</div>
         </div>
+
         <label class="check">
           <input type="checkbox" name="featured" value="1" <%= post && post.featured ? 'checked' : '' %>>
           <span>Destacar na página inicial</span>
@@ -191,7 +243,9 @@
           <input type="checkbox" name="allow_comments" value="1" <%= !post || post.allow_comments ? 'checked' : '' %>>
           <span>Permitir comentários</span>
         </label>
-        <button class="btn btn-primary" type="submit" style="width:100%;margin-top:.5rem">Salvar post</button>
+
+        <button class="btn btn-primary" type="submit" id="btn-main" style="width:100%;margin-top:.75rem">Salvar rascunho</button>
+        <p class="muted small" style="margin:.5rem 0 0;text-align:center">Ctrl+S salva · a prévia não salva nada</p>
       </div>
 
       <!-- análise automática -->
@@ -236,6 +290,7 @@
         <div class="field">
           <label for="excerpt">Resumo (aparece na lista de posts)</label>
           <textarea id="excerpt" name="excerpt" rows="3" maxlength="400"><%= post ? post.excerpt : '' %></textarea>
+          <div class="hint"><span id="excerpt-len">0</span>/400 · ideal entre 120 e 240</div>
         </div>
         <div class="field">
           <label for="seo_description">Descrição para o Google</label>
@@ -263,7 +318,7 @@
         </div>
         <div class="field">
           <label for="tags">Tags (separadas por vírgula)</label>
-          <input id="tags" type="text" name="tags" value="<%= tagList %>" list="tag-options">
+          <input id="tags" type="text" name="tags" value="<%= tagList %>" list="tag-options" autocomplete="off">
           <datalist id="tag-options">
             <% allTags.forEach(t => { %><option value="<%= t %>"></option><% }) %>
           </datalist>
@@ -274,20 +329,19 @@
       <!-- capa -->
       <div class="panel">
         <h3>Imagem de capa</h3>
+        <div id="cover-preview" style="margin-bottom:.75rem">
+          <% if (post && post.cover) { %><img src="<%= post.cover %>" alt="" style="border-radius:8px"><% } %>
+        </div>
         <div class="field">
           <input type="text" name="cover" id="cover" placeholder="/uploads/…"
                  value="<%= post ? post.cover : '' %>">
-        </div>
-        <div id="cover-preview" style="margin-bottom:.75rem">
-          <% if (post && post.cover) { %><img src="<%= post.cover %>" alt="" style="border-radius:8px"><% } %>
         </div>
         <div class="field">
           <label for="cover_credit">Crédito da imagem</label>
           <input id="cover_credit" type="text" name="cover_credit" value="<%= post ? post.cover_credit : '' %>">
         </div>
         <div class="btn-row">
-          <button class="btn btn-ghost btn-sm" type="button" id="btn-pick-cover">Escolher da galeria</button>
-          <a class="btn btn-ghost btn-sm" href="/admin/midia" target="_blank">Enviar nova</a>
+          <button class="btn btn-primary btn-sm" type="button" id="btn-pick-cover">Escolher ou enviar</button>
         </div>
       </div>
 
@@ -318,43 +372,98 @@
   </div>
 
   <!-- barra fixa no rodapé, só no celular: salvar sem precisar rolar -->
-  <div class="save-bar" aria-hidden="false">
+  <div class="save-bar">
     <span class="save-bar-info">
       <span id="word-count-mobile">0 palavras</span>
     </span>
     <button class="btn btn-ghost btn-sm" type="button" id="toggle-preview-mobile">👁 Ver</button>
-    <button class="btn btn-primary" type="submit">Salvar</button>
+    <button class="btn btn-primary" type="submit" id="btn-mobile">Salvar</button>
   </div>
 </form>
 
 <!-- fotos já anexadas, lidas pelo JavaScript -->
 <script type="application/json" id="gallery-data"><%- JSON.stringify(gallery) %></script>
 
-<!-- biblioteca de imagens -->
-<dialog id="media-dialog" style="border:0;border-radius:14px;padding:0;max-width:860px;width:92vw">
-  <div class="panel" style="border:0;max-height:80vh;overflow:auto">
+<!-- biblioteca de imagens, com envio direto -->
+<dialog id="media-dialog" class="media-dialog">
+  <div class="panel" style="border:0;max-height:85vh;overflow:auto">
     <div class="panel-head">
       <h3 id="media-dialog-title">Escolha uma imagem</h3>
       <div class="spacer"></div>
-      <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('media-dialog').close()">fechar</button>
+      <button class="btn btn-ghost btn-sm" type="button" data-close-dialog>fechar</button>
     </div>
     <p class="muted small" id="media-dialog-hint"></p>
-    <% if (media.length) { %>
-      <div class="media-grid">
-        <% media.forEach(m => { %>
-          <div class="media-item media-pick" data-src="<%= m.filename %>"
-               data-alt="<%= m.alt %>" data-credit="<%= m.credit || '' %>">
-            <img src="<%= m.filename %>" alt="<%= m.alt %>" loading="lazy">
-            <div class="meta"><%= (m.alt || m.original).slice(0, 40) %></div>
-          </div>
-        <% }) %>
+
+    <label class="upload-zone" id="upload-zone">
+      <input type="file" id="upload-input" accept="image/*" multiple hidden>
+      <span class="upload-icon">📤</span>
+      <span><b>Enviar do computador ou da câmera</b><br>
+        <span class="muted small">toque aqui, ou arraste as fotos para esta área · até 8 MB cada</span></span>
+    </label>
+    <div class="small" id="upload-status"></div>
+
+    <!-- legenda e crédito de uma foto que vai para o meio do texto -->
+    <div class="insert-form" id="insert-form" hidden>
+      <img id="insert-thumb" src="" alt="">
+      <div class="insert-fields">
+        <div class="field"><label for="insert-caption">Legenda (aparece sob a foto)</label>
+          <input type="text" id="insert-caption" placeholder="O que a foto mostra"></div>
+        <div class="field"><label for="insert-credit">Crédito</label>
+          <input type="text" id="insert-credit" placeholder="Foto: autor, licença"></div>
+        <div class="field"><label for="insert-alt">Descrição para quem não enxerga a imagem</label>
+          <input type="text" id="insert-alt" placeholder="Ex.: arraia de água doce sobre a areia"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" type="button" id="insert-confirm">Inserir no texto</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="insert-cancel">cancelar</button>
+        </div>
       </div>
-    <% } else { %>
-      <div class="empty-state">
+    </div>
+
+    <div class="media-grid" id="media-grid">
+      <% media.forEach(m => { %>
+        <div class="media-item media-pick" data-src="<%= m.filename %>"
+             data-alt="<%= m.alt %>" data-credit="<%= m.credit || '' %>">
+          <img src="<%= m.filename %>" alt="<%= m.alt %>" loading="lazy">
+          <div class="meta"><%= (m.alt || m.original).slice(0, 40) %></div>
+        </div>
+      <% }) %>
+    </div>
+    <% if (!media.length) { %>
+      <div class="empty-state" id="media-empty">
         <div class="big">🖼️</div>
-        <p>Nenhuma imagem ainda. <a href="/admin/midia">Envie a primeira</a>.</p>
+        <p>Nenhuma imagem ainda. Envie a primeira pela área acima.</p>
       </div>
     <% } %>
+  </div>
+</dialog>
+
+<!-- ajuda de formatação -->
+<dialog id="help-dialog" class="media-dialog" style="max-width:640px">
+  <div class="panel" style="border:0;max-height:85vh;overflow:auto">
+    <div class="panel-head">
+      <h3>Como formatar o texto</h3>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm" type="button" data-close-dialog>fechar</button>
+    </div>
+    <p class="muted small">O texto é escrito em Markdown: marcações simples que viram formatação na página.</p>
+    <table class="list help-table">
+      <tr><td><code>Dois Enter</code></td><td>novo parágrafo</td></tr>
+      <tr><td><code>## Subtítulo</code></td><td>seção do texto (aparece no índice lateral)</td></tr>
+      <tr><td><code>### Menor</code></td><td>subseção</td></tr>
+      <tr><td><code>**negrito**</code></td><td><b>negrito</b></td></tr>
+      <tr><td><code>*itálico*</code></td><td><i>itálico</i> — use para nomes científicos: <i>Bothrops atrox</i></td></tr>
+      <tr><td><code>[texto](https://…)</code></td><td>link</td></tr>
+      <tr><td><code>&gt; frase</code></td><td>citação destacada</td></tr>
+      <tr><td><code>- item</code></td><td>lista com marcadores</td></tr>
+      <tr><td><code>1. item</code></td><td>lista numerada</td></tr>
+      <tr><td><code>![descrição](/uploads/foto.jpg "Legenda | Crédito")</code></td><td>foto com legenda e crédito — o botão 🖼 Foto monta isso para você</td></tr>
+      <tr><td><code>---</code></td><td>linha separadora</td></tr>
+    </table>
+    <p class="muted small" style="margin-top:.75rem">
+      Aspas retas viram aspas curvas sozinhas, <code>--</code> vira travessão (—) e
+      <code>...</code> vira reticências. Atalhos: <b>Ctrl+B</b> negrito, <b>Ctrl+I</b> itálico,
+      <b>Ctrl+K</b> link, <b>Ctrl+S</b> salvar.
+    </p>
   </div>
 </dialog>
 

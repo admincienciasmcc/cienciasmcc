@@ -88,6 +88,20 @@
     }, { passive: true });
   }
 
+  // copiar o link do texto
+  document.querySelectorAll('[data-copy-link]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var url = btn.closest('[data-share-url]').dataset.shareUrl || location.href;
+      var feito = function () {
+        btn.textContent = 'Link copiado ✓';
+        btn.classList.add('is-done');
+        setTimeout(function () { btn.textContent = 'Copiar link'; btn.classList.remove('is-done'); }, 2200);
+      };
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(feito);
+      else { prompt('Copie o endereço:', url); }
+    });
+  });
+
   // marca o horário de abertura do formulário (usado contra robôs)
   var ts = document.querySelector('[data-ts-input]');
   if (ts) ts.value = String(Date.now());
